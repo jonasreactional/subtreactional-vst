@@ -175,15 +175,13 @@ void SubtreactionalAudioProcessorEditor::paint (juce::Graphics& g)
         g.drawText (t, r, juce::Justification::centredLeft);
     };
 
-    // OSC divider
+    // OSC sub-labels — positions stored during layoutOsc()
     subLabel (oscPanel.withTop (oscPanel.getY() + kHeaderH + kPad).withHeight (kLabelH), " OSC 1");
-    int oscMidY = oscPanel.getY() + kHeaderH + kPad + kLabelH + kComboH + kPad + kKnobSz + 13 + kPad + kPad;
-    subLabel (oscPanel.withTop (oscMidY).withHeight (kLabelH), " OSC 2");
+    subLabel (oscPanel.withTop (osc2SectionY).withHeight (kLabelH), " OSC 2");
 
-    // Env divider
-    int envMidY = envPanel.getY() + kHeaderH + kPad + kLabelH + kKnobSz + 13 + kPad * 2;
+    // Env sub-labels — ampEnvSectionY stored during layoutEnv()
     subLabel (envPanel.withTop (envPanel.getY() + kHeaderH + kPad).withHeight (kLabelH), " Filter Env");
-    subLabel (envPanel.withTop (envMidY).withHeight (kLabelH), " Amp Env");
+    subLabel (envPanel.withTop (ampEnvSectionY).withHeight (kLabelH), " Amp Env");
 }
 
 //==============================================================================
@@ -209,10 +207,10 @@ void SubtreactionalAudioProcessorEditor::resized()
     const int top = kTitleH + kPad;
     const int bot = H - kPad;
 
-    // Column widths (proportional)
-    const int oscW    = (int)(W * 0.21f);
-    const int filterW = (int)(W * 0.15f);
-    const int envW    = (int)(W * 0.22f);
+    // Column widths: OSC and Env slightly narrower to give FX more room
+    const int oscW    = (int)(W * 0.19f);
+    const int filterW = (int)(W * 0.13f);
+    const int envW    = (int)(W * 0.20f);
     const int fxW     = W - oscW - filterW - envW - 5 * kPad;
 
     int x = kPad;
@@ -241,37 +239,37 @@ void SubtreactionalAudioProcessorEditor::resized()
 
 void SubtreactionalAudioProcessorEditor::layoutOsc (int px, int py, int pw, int /*ph*/)
 {
-    const int cx = px + pw / 2;
     const int comboW = pw - 2 * kPad;
-    const int cx1 = px + pw / 4;
-    const int cx2 = px + 3 * pw / 4;
+    // Divide width into thirds for the three knobs
+    const int cx0 = px + pw / 6;
+    const int cx1 = px + pw / 2;
+    const int cx2 = px + 5 * pw / 6;
 
     // --- OSC 1 ---
-    int y = py + kHeaderH + kPad + kLabelH; // skip sub-section label
+    int y = py + kHeaderH + kPad + kLabelH; // kLabelH reserved for "OSC 1" sub-label in paint()
 
-    // Type combo
-    labels[labelIdx++]->setBounds (px + kPad, y, comboW / 2 - kPad/2, kLabelH);
-    osc1TypeBox.setBounds (px + kPad, y + kLabelH, comboW / 2 - kPad/2, kComboH);
+    // Type combo (full width)
+    labels[labelIdx++]->setBounds (px + kPad, y, comboW, kLabelH);
+    osc1TypeBox.setBounds (px + kPad, y + kLabelH, comboW, kComboH);
     y += kLabelH + kComboH + kPad;
 
-    // Level / Detune / Octave — side by side
-    int y1 = y;
-    placeKnob (osc1Level,  labels[labelIdx++], cx1, y1, kKnobSz);
-    placeKnob (osc1Detune, labels[labelIdx++], cx2, y1, kKnobSz);
-    y = y1 + kLabelH + kKnobSz + 13 + kPad;
-    placeKnob (osc1Octave, labels[labelIdx++], cx, y, kKnobSz);
+    // Level / Detune / Octave — all three on one row
+    placeKnob (osc1Level,  labels[labelIdx++], cx0, y, kKnobSz);
+    placeKnob (osc1Detune, labels[labelIdx++], cx1, y, kKnobSz);
+    placeKnob (osc1Octave, labels[labelIdx++], cx2, y, kKnobSz);
     y += kLabelH + kKnobSz + 13 + kPad * 2;
 
-    // --- OSC 2 ---
-    labels[labelIdx++]->setBounds (px + kPad, y, comboW / 2 - kPad/2, kLabelH); // type label
-    osc2TypeBox.setBounds (px + kPad, y + kLabelH, comboW / 2 - kPad/2, kComboH);
+    // --- OSC 2 --- (store y so paint() can draw the "OSC 2" sub-label)
+    osc2SectionY = y;
+    y += kLabelH;
+
+    labels[labelIdx++]->setBounds (px + kPad, y, comboW, kLabelH);
+    osc2TypeBox.setBounds (px + kPad, y + kLabelH, comboW, kComboH);
     y += kLabelH + kComboH + kPad;
 
-    int y2 = y;
-    placeKnob (osc2Level,  labels[labelIdx++], cx1, y2, kKnobSz);
-    placeKnob (osc2Detune, labels[labelIdx++], cx2, y2, kKnobSz);
-    y = y2 + kLabelH + kKnobSz + 13 + kPad;
-    placeKnob (osc2Octave, labels[labelIdx++], cx, y, kKnobSz);
+    placeKnob (osc2Level,  labels[labelIdx++], cx0, y, kKnobSz);
+    placeKnob (osc2Detune, labels[labelIdx++], cx1, y, kKnobSz);
+    placeKnob (osc2Octave, labels[labelIdx++], cx2, y, kKnobSz);
 }
 
 void SubtreactionalAudioProcessorEditor::layoutFilter (int px, int py, int pw, int /*ph*/)
@@ -303,6 +301,7 @@ void SubtreactionalAudioProcessorEditor::layoutEnv (int px, int py, int pw, int 
 
     // Amp env row
     int y2 = y + kLabelH + kKnobSz + 13 + kPad * 3;
+    ampEnvSectionY = y2 - kPad; // stored for paint() "Amp Env" sub-label
     juce::Slider* aenv[] = { &aenvA, &aenvD, &aenvS, &aenvR };
     for (int i = 0; i < 4; ++i)
         placeKnob (*aenv[i], labels[labelIdx++], cx(i), y2, kKnobSz);
@@ -310,39 +309,46 @@ void SubtreactionalAudioProcessorEditor::layoutEnv (int px, int py, int pw, int 
 
 void SubtreactionalAudioProcessorEditor::layoutFx (int px, int py, int pw, int ph)
 {
-    const int slotW = pw / 4;
+    // Each FX slot occupies one horizontal row:
+    //   [type combo] [Mix] [Time] [Fb] [Rate] [Depth] [T60]
+    // Knob size is computed to fit all 6 knobs + combo in the available width.
+    const int usable  = pw - 2 * kPad;
+    const int comboW  = 68;
+    // 6 knobs with 5 gaps between them, plus one gap after combo
+    const int ks      = (usable - comboW - kPad - 5 * kPad) / 6;
+    const int rowH    = kLabelH + ks + 13 + kPad;
 
-    // Master volume at bottom-right
-    const int mvSz = kKnobSz;
-    int mvX = px + pw - mvSz / 2 - kPad;
-    int mvY = py + ph - kLabelH - mvSz - 13 - kPad;
-    labels[labelIdx + 4*7]->setBounds (mvX - mvSz / 2, mvY, mvSz, kLabelH);
-    masterVolume.setBounds (mvX - mvSz / 2, mvY + kLabelH, mvSz, mvSz + 13);
+    // Master volume sits below the 4 FX rows
+    {
+        const int mvY = py + kHeaderH + kPad + 4 * rowH + kPad;
+        const int mvX = px + pw - kKnobSz / 2 - kPad;
+        labels[labelIdx + 4 * 7]->setBounds (mvX - kKnobSz / 2, mvY, kKnobSz, kLabelH);
+        masterVolume.setBounds (mvX - kKnobSz / 2, mvY + kLabelH, kKnobSz, kKnobSz + 13);
+    }
 
     for (int i = 0; i < 4; ++i)
     {
-        int sx  = px + i * slotW;
-        int sw  = slotW - kPad;
-        int y   = py + kHeaderH + kPad;
-        int ks  = juce::jmin (kKnobSz, (sw - 2 * kPad) / 3);
+        int x = px + kPad;
+        const int y = py + kHeaderH + kPad + i * rowH;
 
         // Type combo
-        labels[labelIdx]->setBounds (sx + kPad, y, sw, kLabelH);
-        fxTypeBox[i].setBounds (sx + kPad, y + kLabelH, sw, kComboH);
+        labels[labelIdx]->setBounds (x, y, comboW, kLabelH);
+        fxTypeBox[i].setBounds (x, y + kLabelH, comboW, kComboH);
         labelIdx++;
-        y += kLabelH + kComboH + kPad;
+        x += comboW + kPad;
 
-        // Row 1: Mix | Time/Rate/T60 | Feedback/Depth
-        int cx0 = sx + kPad + ks / 2;
-        int cx1 = cx0 + ks + kPad;
-        int cx2 = cx1 + ks + kPad;
+        // Six knobs in a row — all on the same y baseline
+        auto nextKnob = [&](juce::Slider& s, juce::Label* lbl) {
+            placeKnob (s, lbl, x + ks / 2, y, ks);
+            x += ks + kPad;
+        };
 
-        placeKnob (fxMix[i],         labels[labelIdx++], cx0, y, ks);
-        placeKnob (fxDelayTime[i],   labels[labelIdx++], cx1, y, ks);
-        placeKnob (fxDelayFb[i],     labels[labelIdx++], cx2, y, ks);
-        placeKnob (fxChorusRate[i],  labels[labelIdx++], cx1, y, ks);
-        placeKnob (fxChorusDepth[i], labels[labelIdx++], cx2, y, ks);
-        placeKnob (fxReverbT60[i],   labels[labelIdx++], cx1, y, ks);
+        nextKnob (fxMix[i],          labels[labelIdx++]);
+        nextKnob (fxDelayTime[i],    labels[labelIdx++]);
+        nextKnob (fxDelayFb[i],      labels[labelIdx++]);
+        nextKnob (fxChorusRate[i],   labels[labelIdx++]);
+        nextKnob (fxChorusDepth[i],  labels[labelIdx++]);
+        nextKnob (fxReverbT60[i],    labels[labelIdx++]);
     }
 }
 

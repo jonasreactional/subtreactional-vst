@@ -66,6 +66,10 @@ private:
     juce::OwnedArray<juce::Label> labels;
     int labelIdx = 0;
 
+    // Stored during layout, read in paint() for sub-section labels
+    int osc2SectionY  = 0;
+    int ampEnvSectionY = 0;
+
     //==========================================================================
     // Helpers
     static void styleRotary (juce::Slider& s);
