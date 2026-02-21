@@ -16,7 +16,7 @@ public:
 private:
     SubtreactionalAudioProcessor& processor;
 
-    using APVTS           = juce::AudioProcessorValueTreeState;
+    using APVTS            = juce::AudioProcessorValueTreeState;
     using SliderAttachment = APVTS::SliderAttachment;
     using ComboAttachment  = APVTS::ComboBoxAttachment;
 
@@ -33,55 +33,58 @@ private:
     //==========================================================================
     // Filter section
     juce::ComboBox filterTypeBox;
-    juce::Slider   filterCutoff, filterResonance, filterEnvAmount;
+    juce::Slider   filterCutoff, filterResonance, filterEnvAmt;
 
     std::unique_ptr<ComboAttachment>  filterTypeAtt;
-    std::unique_ptr<SliderAttachment> filterCutoffAtt, filterResonanceAtt, filterEnvAmountAtt;
+    std::unique_ptr<SliderAttachment> filterCutoffAtt, filterResonanceAtt, filterEnvAmtAtt;
 
     //==========================================================================
-    // Envelope section (filter env + amp env)
-    juce::Slider fenvAttack, fenvDecay, fenvSustain, fenvRelease;
-    juce::Slider aenvAttack, aenvDecay, aenvSustain, aenvRelease;
+    // Envelope section
+    juce::Slider fenvA, fenvD, fenvS, fenvR;
+    juce::Slider aenvA, aenvD, aenvS, aenvR;
 
-    std::unique_ptr<SliderAttachment> fenvAttackAtt, fenvDecayAtt, fenvSustainAtt, fenvReleaseAtt;
-    std::unique_ptr<SliderAttachment> aenvAttackAtt, aenvDecayAtt, aenvSustainAtt, aenvReleaseAtt;
+    std::unique_ptr<SliderAttachment> fenvAAtt, fenvDAtt, fenvSAtt, fenvRAtt;
+    std::unique_ptr<SliderAttachment> aenvAAtt, aenvDAtt, aenvSAtt, aenvRAtt;
 
     //==========================================================================
-    // Effects section (4 slots)
+    // FX section (4 slots)
     juce::ComboBox fxTypeBox[4];
-    juce::Slider   fxMix[4], fxTime[4], fxFeedback[4];
-    juce::Slider   fxRate[4], fxDepth[4], fxT60[4];
+    juce::Slider   fxMix[4], fxDelayTime[4], fxDelayFb[4];
+    juce::Slider   fxChorusRate[4], fxChorusDepth[4], fxReverbT60[4];
 
     std::unique_ptr<ComboAttachment>  fxTypeAtt[4];
-    std::unique_ptr<SliderAttachment> fxMixAtt[4], fxTimeAtt[4], fxFeedbackAtt[4];
-    std::unique_ptr<SliderAttachment> fxRateAtt[4], fxDepthAtt[4], fxT60Att[4];
+    std::unique_ptr<SliderAttachment> fxMixAtt[4], fxDelayTimeAtt[4], fxDelayFbAtt[4];
+    std::unique_ptr<SliderAttachment> fxChorusRateAtt[4], fxChorusDepthAtt[4], fxReverbT60Att[4];
 
     //==========================================================================
     // Master volume
-    juce::Slider   masterVolume;
+    juce::Slider masterVolume;
     std::unique_ptr<SliderAttachment> masterVolumeAtt;
 
     //==========================================================================
+    // All labels are owned here and drawn in resized()
+    juce::OwnedArray<juce::Label> labels;
+
+    //==========================================================================
     // Helpers
-    static void configureRotary (juce::Slider& s);
-    static void configureCombo  (juce::ComboBox& b);
+    static void styleRotary (juce::Slider& s);
+    static void styleCombo  (juce::ComboBox& b, const juce::StringArray& items);
 
-    void makeRotary    (juce::Slider& s,    const juce::String& paramId,
-                        std::unique_ptr<SliderAttachment>& att,
-                        APVTS& apvts);
-    void makeComboBox  (juce::ComboBox& b,  const juce::String& paramId,
-                        std::unique_ptr<ComboAttachment>& att,
-                        APVTS& apvts);
+    juce::Label* addLabel (const juce::String& text, juce::Component& attachTo);
 
-    // Section panel rectangles (computed in resized())
+    // Section panel rectangles (set in resized)
     juce::Rectangle<int> oscPanel, filterPanel, envPanel, fxPanel;
 
-    void paintSectionBg (juce::Graphics& g, juce::Rectangle<int> bounds,
-                         const juce::String& title) const;
-    void layoutOscSection();
-    void layoutFilterSection();
-    void layoutEnvSection();
-    void layoutFxSection();
+    void paintPanel (juce::Graphics& g, juce::Rectangle<int> r, const juce::String& title) const;
+
+    void layoutOsc    (int x, int y, int w, int h);
+    void layoutFilter (int x, int y, int w, int h);
+    void layoutEnv    (int x, int y, int w, int h);
+    void layoutFx     (int x, int y, int w, int h);
+
+    // Place a rotary knob with a label above it; returns the knob bottom y
+    int placeKnob (juce::Slider& s, juce::Label* lbl,
+                   int cx, int y, int size);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SubtreactionalAudioProcessorEditor)
 };

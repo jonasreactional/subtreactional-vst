@@ -9,12 +9,75 @@ extern "C" {
 }
 
 //==============================================================================
-// APVTS parameter IDs — match st_synth dot-notation names exactly.
-// The osc type enum: 0=off 1=saw 2=square 3=sine 4=tri
-// The filter type enum: 0=off 1=lp 2=hp 3=bp
-// The fx type enum: 0=off 1=delay 2=chorus 3=reverb
+// Full parameter mapping: APVTS ID (JUCE-safe) → st_synth name (dot notation).
+// JUCE Identifier forbids dots; we use underscores in APVTS IDs.
 //==============================================================================
+const ParamMap SubtreactionalAudioProcessor::kParams[] = {
+    // OSC 1
+    { "osc1_type",           "osc1.type" },
+    { "osc1_level",          "osc1.level" },
+    { "osc1_detune",         "osc1.detune" },
+    { "osc1_octave",         "osc1.octave" },
+    // OSC 2
+    { "osc2_type",           "osc2.type" },
+    { "osc2_level",          "osc2.level" },
+    { "osc2_detune",         "osc2.detune" },
+    { "osc2_octave",         "osc2.octave" },
+    // Filter
+    { "filter_type",         "filter.type" },
+    { "filter_cutoff",       "filter.cutoff" },
+    { "filter_resonance",    "filter.resonance" },
+    { "filter_env_amount",   "filter.env_amount" },
+    // Filter envelope
+    { "fenv_attack",         "filter_env.attack" },
+    { "fenv_decay",          "filter_env.decay" },
+    { "fenv_sustain",        "filter_env.sustain" },
+    { "fenv_release",        "filter_env.release" },
+    // Amp envelope
+    { "aenv_attack",         "amp_env.attack" },
+    { "aenv_decay",          "amp_env.decay" },
+    { "aenv_sustain",        "amp_env.sustain" },
+    { "aenv_release",        "amp_env.release" },
+    // FX 0
+    { "fx0_type",            "fx0.type" },
+    { "fx0_mix",             "fx0.mix" },
+    { "fx0_delay_time",      "fx0.delay_time" },
+    { "fx0_delay_feedback",  "fx0.delay_feedback" },
+    { "fx0_chorus_rate",     "fx0.chorus_rate" },
+    { "fx0_chorus_depth",    "fx0.chorus_depth" },
+    { "fx0_reverb_t60",      "fx0.reverb_t60" },
+    // FX 1
+    { "fx1_type",            "fx1.type" },
+    { "fx1_mix",             "fx1.mix" },
+    { "fx1_delay_time",      "fx1.delay_time" },
+    { "fx1_delay_feedback",  "fx1.delay_feedback" },
+    { "fx1_chorus_rate",     "fx1.chorus_rate" },
+    { "fx1_chorus_depth",    "fx1.chorus_depth" },
+    { "fx1_reverb_t60",      "fx1.reverb_t60" },
+    // FX 2
+    { "fx2_type",            "fx2.type" },
+    { "fx2_mix",             "fx2.mix" },
+    { "fx2_delay_time",      "fx2.delay_time" },
+    { "fx2_delay_feedback",  "fx2.delay_feedback" },
+    { "fx2_chorus_rate",     "fx2.chorus_rate" },
+    { "fx2_chorus_depth",    "fx2.chorus_depth" },
+    { "fx2_reverb_t60",      "fx2.reverb_t60" },
+    // FX 3
+    { "fx3_type",            "fx3.type" },
+    { "fx3_mix",             "fx3.mix" },
+    { "fx3_delay_time",      "fx3.delay_time" },
+    { "fx3_delay_feedback",  "fx3.delay_feedback" },
+    { "fx3_chorus_rate",     "fx3.chorus_rate" },
+    { "fx3_chorus_depth",    "fx3.chorus_depth" },
+    { "fx3_reverb_t60",      "fx3.reverb_t60" },
+    // Master
+    { "master_volume",       "master_volume" },
+};
 
+const int SubtreactionalAudioProcessor::kNumParams =
+    (int)(sizeof (kParams) / sizeof (kParams[0]));
+
+//==============================================================================
 juce::AudioProcessorValueTreeState::ParameterLayout
 SubtreactionalAudioProcessor::createParameterLayout()
 {
@@ -37,47 +100,48 @@ SubtreactionalAudioProcessor::createParameterLayout()
             juce::ParameterID{id, 1}, id, choices, def));
     };
 
-    // OSC 1
-    addCombo ("osc1.type",   {"off","saw","square","sine","tri"}, 1);
-    addSlider("osc1.level",  0.0f, 1.0f, 0.7f, 0.001f);
-    addSlider("osc1.detune", -50.0f, 50.0f, 0.0f, 0.1f);
-    addSlider("osc1.octave", -2.0f, 2.0f, 0.0f, 1.0f);
+    // OSC 1  (default: saw, full level)
+    addCombo ("osc1_type",   {"Off","Saw","Square","Sine","Tri"}, 1);
+    addSlider("osc1_level",  0.0f, 1.0f, 0.7f, 0.001f);
+    addSlider("osc1_detune", -50.0f, 50.0f, 0.0f, 0.1f);
+    addSlider("osc1_octave", -2.0f, 2.0f, 0.0f, 1.0f);
 
-    // OSC 2
-    addCombo ("osc2.type",   {"off","saw","square","sine","tri"}, 0);
-    addSlider("osc2.level",  0.0f, 1.0f, 0.0f, 0.001f);
-    addSlider("osc2.detune", -50.0f, 50.0f, 0.0f, 0.1f);
-    addSlider("osc2.octave", -2.0f, 2.0f, 0.0f, 1.0f);
+    // OSC 2  (default: off)
+    addCombo ("osc2_type",   {"Off","Saw","Square","Sine","Tri"}, 0);
+    addSlider("osc2_level",  0.0f, 1.0f, 0.0f, 0.001f);
+    addSlider("osc2_detune", -50.0f, 50.0f, 0.0f, 0.1f);
+    addSlider("osc2_octave", -2.0f, 2.0f, 0.0f, 1.0f);
 
     // Filter
-    addCombo ("filter.type",       {"off","lp","hp","bp"}, 1);
-    addSlider("filter.cutoff",     20.0f, 20000.0f, 2000.0f, 0.0f, 0.25f); // skewed
-    addSlider("filter.resonance",  0.0f, 1.0f, 0.3f, 0.001f);
-    addSlider("filter.env_amount", 0.0f, 1.0f, 0.0f, 0.001f);
+    addCombo ("filter_type",       {"Off","LP","HP","BP"}, 1);
+    addSlider("filter_cutoff",     20.0f, 20000.0f, 2000.0f, 0.0f, 0.25f);
+    addSlider("filter_resonance",  0.0f, 1.0f, 0.3f, 0.001f);
+    addSlider("filter_env_amount", 0.0f, 1.0f, 0.0f, 0.001f);
 
     // Filter envelope
-    addSlider("filter_env.attack",  1.0f, 5000.0f, 10.0f,  0.0f, 0.25f);
-    addSlider("filter_env.decay",   1.0f, 5000.0f, 300.0f, 0.0f, 0.25f);
-    addSlider("filter_env.sustain", 0.0f, 1.0f,    0.0f,   0.001f);
-    addSlider("filter_env.release", 1.0f, 5000.0f, 200.0f, 0.0f, 0.25f);
+    addSlider("fenv_attack",  1.0f, 5000.0f, 10.0f,  0.0f, 0.25f);
+    addSlider("fenv_decay",   1.0f, 5000.0f, 300.0f, 0.0f, 0.25f);
+    addSlider("fenv_sustain", 0.0f, 1.0f,    0.0f,   0.001f);
+    addSlider("fenv_release", 1.0f, 5000.0f, 200.0f, 0.0f, 0.25f);
 
     // Amp envelope
-    addSlider("amp_env.attack",  1.0f, 5000.0f, 10.0f,  0.0f, 0.25f);
-    addSlider("amp_env.decay",   1.0f, 5000.0f, 200.0f, 0.0f, 0.25f);
-    addSlider("amp_env.sustain", 0.0f, 1.0f,    0.7f,   0.001f);
-    addSlider("amp_env.release", 1.0f, 5000.0f, 500.0f, 0.0f, 0.25f);
+    addSlider("aenv_attack",  1.0f, 5000.0f, 10.0f,  0.0f, 0.25f);
+    addSlider("aenv_decay",   1.0f, 5000.0f, 200.0f, 0.0f, 0.25f);
+    addSlider("aenv_sustain", 0.0f, 1.0f,    0.7f,   0.001f);
+    addSlider("aenv_release", 1.0f, 5000.0f, 500.0f, 0.0f, 0.25f);
 
     // FX slots 0..3
+    const juce::StringArray fxTypes { "Off","Delay","Chorus","Reverb" };
     for (int i = 0; i < 4; ++i)
     {
-        juce::String fx = "fx" + juce::String(i);
-        addCombo ((fx + ".type").toRawUTF8(), {"off","delay","chorus","reverb"}, 0);
-        addSlider((fx + ".mix").toRawUTF8(),      0.0f,  1.0f,    0.3f,  0.001f);
-        addSlider((fx + ".time").toRawUTF8(),    10.0f, 500.0f, 250.0f,  0.1f);
-        addSlider((fx + ".feedback").toRawUTF8(), 0.0f,  0.99f,  0.3f,  0.001f);
-        addSlider((fx + ".rate").toRawUTF8(),     0.1f, 10.0f,   0.5f,  0.01f);
-        addSlider((fx + ".depth").toRawUTF8(),    0.0f,  1.0f,   0.4f,  0.001f);
-        addSlider((fx + ".t60").toRawUTF8(),      0.1f, 10.0f,   2.0f,  0.01f);
+        juce::String fx = "fx" + juce::String(i) + "_";
+        addCombo ((fx + "type").toRawUTF8(),           fxTypes, 0);
+        addSlider((fx + "mix").toRawUTF8(),            0.0f,  1.0f,    0.3f, 0.001f);
+        addSlider((fx + "delay_time").toRawUTF8(),    10.0f, 500.0f, 250.0f, 0.1f);
+        addSlider((fx + "delay_feedback").toRawUTF8(), 0.0f,  0.99f,  0.3f, 0.001f);
+        addSlider((fx + "chorus_rate").toRawUTF8(),    0.1f, 10.0f,   0.5f, 0.01f);
+        addSlider((fx + "chorus_depth").toRawUTF8(),   0.0f,  1.0f,   0.4f, 0.001f);
+        addSlider((fx + "reverb_t60").toRawUTF8(),     0.1f, 10.0f,   2.0f, 0.01f);
     }
 
     // Master volume
@@ -139,9 +203,7 @@ void SubtreactionalAudioProcessor::releaseResources()
 
 bool SubtreactionalAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
-        return false;
-    return true;
+    return layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
 }
 
 //==============================================================================
@@ -157,19 +219,27 @@ void SubtreactionalAudioProcessor::processBlock (juce::AudioBuffer<float>& buffe
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
 
+    // Sync all APVTS parameters to the synth before rendering.
+    // getRawParameterValue returns std::atomic<float>*, safe from audio thread.
+    for (int i = 0; i < kNumParams; ++i)
+    {
+        float val = apvts.getRawParameterValue (kParams[i].apvtsId)->load();
+        st_synth_set_param_float (&synth, kParams[i].synthName, val);
+    }
+
     // Handle MIDI events
     for (const auto metadata : midiMessages)
     {
         const auto msg = metadata.getMessage();
         if (msg.isNoteOn())
-            st_synth_note_on (&synth, msg.getNoteNumber(), msg.getVelocity());
+            st_synth_note_on  (&synth, msg.getNoteNumber(), msg.getVelocity());
         else if (msg.isNoteOff())
             st_synth_note_off (&synth, msg.getNoteNumber(), 0);
         else if (msg.isController())
-            st_synth_midi_cc (&synth, msg.getControllerNumber(), msg.getControllerValue());
+            st_synth_midi_cc  (&synth, msg.getControllerNumber(), msg.getControllerValue());
     }
 
-    // Render audio — st_synth_render add-mixes into buffers (they are already cleared)
+    // Render audio — st_synth_render add-mixes into (already-cleared) buffers
     float* channelPtrs[2] = {
         buffer.getWritePointer (0),
         buffer.getWritePointer (1)
@@ -202,7 +272,6 @@ void SubtreactionalAudioProcessor::setStateInformation (const void* data, int si
     if (! synthInitialised || sizeInBytes <= 0)
         return;
 
-    // Null-terminate
     juce::MemoryBlock mb (data, static_cast<size_t> (sizeInBytes));
     mb.append ("\0", 1);
 
@@ -212,27 +281,15 @@ void SubtreactionalAudioProcessor::setStateInformation (const void* data, int si
 }
 
 //==============================================================================
-void SubtreactionalAudioProcessor::applyParam (const char* name, float value)
-{
-    st_synth_set_param_float (&synth, name, value);
-}
-
 void SubtreactionalAudioProcessor::syncAllParamsToSynth()
 {
     if (! synthInitialised)
         return;
 
-    // Collect all parameter IDs and push their current values to synth.
-    // Osc types: APVTS combo index matches st_osc_type enum values.
-    // Filter/FX types same.
-    for (auto* param : apvts.processor.getParameters())
+    for (int i = 0; i < kNumParams; ++i)
     {
-        if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (param))
-        {
-            juce::String id = ranged->getParameterID();
-            float value     = ranged->convertFrom0to1 (ranged->getValue());
-            st_synth_set_param_float (&synth, id.toRawUTF8(), value);
-        }
+        float val = apvts.getRawParameterValue (kParams[i].apvtsId)->load();
+        st_synth_set_param_float (&synth, kParams[i].synthName, val);
     }
 }
 

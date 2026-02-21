@@ -7,6 +7,16 @@ extern "C" {
 }
 
 //==============================================================================
+// Maps JUCE-safe APVTS IDs (underscores) to st_synth dot-notation param names.
+// Dots are not valid JUCE Identifier characters; using this table keeps the
+// APVTS IDs legal while the synth's st_param_set keeps its own naming.
+struct ParamMap
+{
+    const char* apvtsId;   // used in APVTS, attachments, and DAW automation
+    const char* synthName; // passed to st_synth_set_param_float
+};
+
+//==============================================================================
 class SubtreactionalAudioProcessor : public juce::AudioProcessor
 {
 public:
@@ -49,17 +59,18 @@ public:
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
+    // Full param mapping table — also used by the editor for attachments
+    static const ParamMap kParams[];
+    static const int      kNumParams;
+
 private:
     static constexpr size_t kMempoolSize = 4 * 1024 * 1024; // 4 MB
     char     mempool[kMempoolSize];
     st_synth synth;
     bool     synthInitialised = false;
 
-    /* Apply all current APVTS values to the synth */
+    // Push all current APVTS values to the synth (safe to call from any thread)
     void syncAllParamsToSynth();
-
-    /* Apply a single named float param to the synth */
-    void applyParam (const char* name, float value);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SubtreactionalAudioProcessor)
 };
