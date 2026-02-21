@@ -27,9 +27,6 @@ SubtreactionalAudioProcessorEditor::SubtreactionalAudioProcessorEditor (
     SubtreactionalAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
-    setSize (860, 480);
-    setResizable (false, false);
-
     auto& apvts = processor.apvts;
 
     // -- Helpers -------------------------------------------------------
@@ -99,6 +96,10 @@ SubtreactionalAudioProcessorEditor::SubtreactionalAudioProcessorEditor (
 
     // -- Master volume --------------------------------------------------
     knob (masterVolume, "master_volume", masterVolumeAtt, "Master");
+
+    // setSize must come AFTER all components are created: it triggers resized()
+    // immediately, which accesses the labels array and component bounds.
+    setSize (860, 480);
 }
 
 SubtreactionalAudioProcessorEditor::~SubtreactionalAudioProcessorEditor() = default;
@@ -200,6 +201,9 @@ int SubtreactionalAudioProcessorEditor::placeKnob (
 //==============================================================================
 void SubtreactionalAudioProcessorEditor::resized()
 {
+    // Reset label cursor so repeated resized() calls lay out correctly
+    labelIdx = 0;
+
     const int W = getWidth();
     const int H = getHeight();
     const int top = kTitleH + kPad;
@@ -235,11 +239,8 @@ void SubtreactionalAudioProcessorEditor::resized()
 //              masterVol
 // We just use labels[i] in the same construction order.
 
-static int labelIdx = 0; // reset in layoutOsc
-
 void SubtreactionalAudioProcessorEditor::layoutOsc (int px, int py, int pw, int /*ph*/)
 {
-    labelIdx = 0;
     const int cx = px + pw / 2;
     const int comboW = pw - 2 * kPad;
     const int cx1 = px + pw / 4;

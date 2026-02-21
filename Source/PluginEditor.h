@@ -62,8 +62,9 @@ private:
     std::unique_ptr<SliderAttachment> masterVolumeAtt;
 
     //==========================================================================
-    // All labels are owned here and drawn in resized()
+    // All labels are owned here; labelIdx is the layout cursor reset each resized()
     juce::OwnedArray<juce::Label> labels;
+    int labelIdx = 0;
 
     //==========================================================================
     // Helpers
