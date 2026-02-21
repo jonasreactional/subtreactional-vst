@@ -1,0 +1,35 @@
+#pragma once
+
+#include <juce_gui_extra/juce_gui_extra.h>
+#include "PluginProcessor.h"
+
+//==============================================================================
+/**
+ * WebBrowserComponent subclass that bridges JUCE APVTS parameters to/from
+ * a TypeScript/JavaScript web UI.
+ *
+ * JS → C++:  intercepts  juce://param?id=<id>&v=<value>  navigations
+ * C++ → JS:  calls       window.__juce.onParam(id, value)  via goToURL("javascript:...")
+ */
+class JuceBridge : public juce::WebBrowserComponent
+{
+public:
+    explicit JuceBridge (SubtreactionalAudioProcessor& processor);
+    ~JuceBridge() override = default;
+
+    /** Push a single parameter value to the web UI (must be called on the message thread). */
+    void pushParam (const juce::String& id, float value);
+
+    /** Push all current APVTS values to the web UI. */
+    void pushAllParams();
+
+    //==========================================================================
+    // WebBrowserComponent overrides
+    bool pageAboutToLoad  (const juce::String& newURL) override;
+    void pageFinishedLoading (const juce::String& url) override;
+
+private:
+    SubtreactionalAudioProcessor& processor;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (JuceBridge)
+};

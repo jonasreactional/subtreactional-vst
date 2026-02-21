@@ -30,6 +30,18 @@ add_subdirectory(external/subtreactional)
 target_include_directories(subtreactional PRIVATE ${cjson_SOURCE_DIR})
 target_link_libraries(subtreactional PRIVATE cjson)
 
+# BinaryData target for the web UI (Release builds).
+# Run `npm run build` inside web/ before configuring CMake in Release mode.
+# The file is optional at configure time so Debug builds (using the dev server)
+# don't require a prior npm build.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/web/dist/index.html")
+    juce_add_binary_data(SubtreactionalWebUI
+        SOURCES web/dist/index.html)
+    set(HAVE_WEB_UI TRUE)
+else()
+    set(HAVE_WEB_UI FALSE)
+endif()
+
 juce_add_plugin(SubtreactionalVST
     PLUGIN_MANUFACTURER_CODE  RCTL
     PLUGIN_CODE               Stre
@@ -47,11 +59,12 @@ target_sources(SubtreactionalVST
     PRIVATE
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
+        Source/JuceBridge.cpp
 )
 
 target_compile_definitions(SubtreactionalVST
     PUBLIC
-        JUCE_WEB_BROWSER=0
+        JUCE_WEB_BROWSER=1
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
 )
@@ -61,8 +74,13 @@ target_link_libraries(SubtreactionalVST
         subtreactional
         juce::juce_audio_utils
         juce::juce_audio_plugin_client
+        juce::juce_gui_extra
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags
 )
+
+if(HAVE_WEB_UI)
+    target_link_libraries(SubtreactionalVST PRIVATE SubtreactionalWebUI)
+endif()
