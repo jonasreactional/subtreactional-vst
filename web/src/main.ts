@@ -18,6 +18,7 @@ interface ParamDef {
 const OSC_TYPES = ['Off', 'Saw', 'Square', 'Sine', 'Tri'];
 const FILTER_TYPES = ['Off', 'LP', 'HP', 'BP'];
 const FX_TYPES = ['Off', 'Delay', 'Chorus', 'Reverb'];
+const VOICE_COUNTS = Array.from({ length: 16 }, (_, i) => String(i + 1)); // '1' to '16'
 
 const PARAMS: ParamDef[] = [
   // OSC 1
@@ -57,6 +58,8 @@ const PARAMS: ParamDef[] = [
   ]),
   // Master
   { id: 'master_volume', label: 'Master', min: 0, max: 1, defaultValue: 0.8, type: 'slider' },
+  // Voice count
+  { id: 'num_voices', label: 'Voices', min: 0, max: 15, defaultValue: 7, type: 'combo', options: VOICE_COUNTS },
 ];
 
 // ---------------------------------------------------------------------------
@@ -964,9 +967,26 @@ for (let i = 0; i < 4; i++) {
   masterWrap.style.display = 'flex';
   masterWrap.style.flexDirection = 'column';
   masterWrap.style.alignItems = 'center';
-  masterWrap.style.gap = '4px';
+  masterWrap.style.gap = '6px';
 
   masterWrap.appendChild(buildKnob('master_volume', 52));
+
+  // Voice count dropdown
+  const voicesWrap = document.createElement('div');
+  voicesWrap.style.display = 'flex';
+  voicesWrap.style.flexDirection = 'column';
+  voicesWrap.style.alignItems = 'center';
+  voicesWrap.style.gap = '2px';
+  const voicesLabel = document.createElement('div');
+  voicesLabel.textContent = 'Voices';
+  voicesLabel.style.fontSize = '9px';
+  voicesLabel.style.color = C.white48;
+  voicesLabel.style.textTransform = 'uppercase';
+  voicesLabel.style.letterSpacing = '0.5px';
+  voicesLabel.style.fontFamily = "'Inter', system-ui, sans-serif";
+  voicesWrap.appendChild(voicesLabel);
+  voicesWrap.appendChild(buildDropdown('num_voices', 60));
+  masterWrap.appendChild(voicesWrap);
 
   masterPanel.appendChild(masterWrap);
   rightCol.appendChild(masterPanel);

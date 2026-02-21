@@ -72,6 +72,8 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "fx3_reverb_t60",      "fx3.reverb_t60" },
     // Master
     { "master_volume",       "master_volume" },
+    // Voice count
+    { "num_voices",          "num_voices" },
 };
 
 const int SubtreactionalAudioProcessor::kNumParams =
@@ -147,6 +149,12 @@ SubtreactionalAudioProcessor::createParameterLayout()
     // Master volume
     addSlider("master_volume", 0.0f, 1.0f, 0.8f, 0.001f);
 
+    // Voice count (1-16, default 8)
+    juce::StringArray voiceChoices;
+    for (int i = 1; i <= 16; ++i)
+        voiceChoices.add(juce::String(i));
+    addCombo("num_voices", voiceChoices, 7); // index 7 = 8 voices
+
     return { params.begin(), params.end() };
 }
 
@@ -178,9 +186,19 @@ void SubtreactionalAudioProcessor::prepareToPlay (double sampleRate, int samples
     st_config cfg;
     cfg.sample_rate    = static_cast<float> (sampleRate);
     cfg.max_block_size = samplesPerBlock;
-    cfg.num_voices     = 8;
     cfg.memory         = mempool;
     cfg.memory_size    = kMempoolSize;
+
+    // Read num_voices from APVTS (choice param: 0=1 voice, 1=2 voices, ..., 15=16 voices)
+    if (auto* numVoicesParam = dynamic_cast<juce::AudioParameterChoice*>(
+            apvts.getParameter("num_voices")))
+    {
+        cfg.num_voices = numVoicesParam->getIndex() + 1;
+    }
+    else
+    {
+        cfg.num_voices = 8; // fallback
+    }
 
     if (st_synth_init (&synth, &cfg) != 0)
     {
