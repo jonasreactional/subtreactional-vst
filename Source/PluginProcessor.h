@@ -69,8 +69,11 @@ private:
     st_synth synth;
     bool     synthInitialised = false;
 
-    // Push all current APVTS values to the synth (safe to call from any thread)
+    // Push all current APVTS values to the synth (safe from any thread)
     void syncAllParamsToSynth();
+
+    // Read all values from synth back into APVTS (used after loading a patch)
+    void syncApvtsFromSynth();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SubtreactionalAudioProcessor)
 };

@@ -137,7 +137,7 @@ SubtreactionalAudioProcessor::createParameterLayout()
         juce::String fx = "fx" + juce::String(i) + "_";
         addCombo ((fx + "type").toRawUTF8(),           fxTypes, 0);
         addSlider((fx + "mix").toRawUTF8(),            0.0f,  1.0f,    0.3f, 0.001f);
-        addSlider((fx + "delay_time").toRawUTF8(),    10.0f, 500.0f, 250.0f, 0.1f);
+        addSlider((fx + "delay_time").toRawUTF8(),    10.0f, 1000.0f, 250.0f, 0.1f);
         addSlider((fx + "delay_feedback").toRawUTF8(), 0.0f,  0.99f,  0.3f, 0.001f);
         addSlider((fx + "chorus_rate").toRawUTF8(),    0.1f, 10.0f,   0.5f, 0.01f);
         addSlider((fx + "chorus_depth").toRawUTF8(),   0.0f,  1.0f,   0.4f, 0.001f);
@@ -277,7 +277,7 @@ void SubtreactionalAudioProcessor::setStateInformation (const void* data, int si
 
     const char* json = static_cast<const char*> (mb.getData());
     if (st_patch_load_string (&synth, json) == 0)
-        syncAllParamsToSynth();
+        syncApvtsFromSynth();  // synth → APVTS so knobs reflect the loaded patch
 }
 
 //==============================================================================
@@ -290,6 +290,25 @@ void SubtreactionalAudioProcessor::syncAllParamsToSynth()
     {
         float val = apvts.getRawParameterValue (kParams[i].apvtsId)->load();
         st_synth_set_param_float (&synth, kParams[i].synthName, val);
+    }
+}
+
+void SubtreactionalAudioProcessor::syncApvtsFromSynth()
+{
+    if (! synthInitialised)
+        return;
+
+    for (int i = 0; i < kNumParams; ++i)
+    {
+        float val = 0.0f;
+        if (st_synth_get_param_float (&synth, kParams[i].synthName, &val) != 0)
+            continue;
+
+        if (auto* p = dynamic_cast<juce::RangedAudioParameter*> (
+                apvts.getParameter (kParams[i].apvtsId)))
+        {
+            p->setValueNotifyingHost (p->getNormalisableRange().convertTo0to1 (val));
+        }
     }
 }
 

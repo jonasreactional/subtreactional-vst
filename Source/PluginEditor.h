@@ -67,8 +67,14 @@ private:
     int labelIdx = 0;
 
     // Stored during layout, read in paint() for sub-section labels
-    int osc2SectionY  = 0;
+    int osc2SectionY   = 0;
     int ampEnvSectionY = 0;
+
+    // Stored during layoutFx; used by updateFxVisibility to find correct labels
+    int fxLabelStart[4] = {};
+
+    // Show/hide FX knobs based on the selected type for slot i
+    void updateFxVisibility (int slot);
 
     //==========================================================================
     // Helpers

@@ -97,6 +97,10 @@ SubtreactionalAudioProcessorEditor::SubtreactionalAudioProcessorEditor (
     // -- Master volume --------------------------------------------------
     knob (masterVolume, "master_volume", masterVolumeAtt, "Master");
 
+    // Wire up FX type combo callbacks so knobs show/hide when type changes
+    for (int i = 0; i < 4; ++i)
+        fxTypeBox[i].onChange = [this, i]() { updateFxVisibility (i); };
+
     // setSize must come AFTER all components are created: it triggers resized()
     // immediately, which accesses the labels array and component bounds.
     setSize (860, 480);
@@ -223,6 +227,10 @@ void SubtreactionalAudioProcessorEditor::resized()
     layoutFilter (filterPanel.getX(), filterPanel.getY(), filterPanel.getWidth(), filterPanel.getHeight());
     layoutEnv    (envPanel.getX(),    envPanel.getY(),    envPanel.getWidth(),    envPanel.getHeight());
     layoutFx     (fxPanel.getX(),     fxPanel.getY(),     fxPanel.getWidth(),     fxPanel.getHeight());
+
+    // Apply type-based visibility after layout (layout sets bounds on all knobs)
+    for (int i = 0; i < 4; ++i)
+        updateFxVisibility (i);
 }
 
 //==============================================================================
@@ -331,7 +339,8 @@ void SubtreactionalAudioProcessorEditor::layoutFx (int px, int py, int pw, int p
         int x = px + kPad;
         const int y = py + kHeaderH + kPad + i * rowH;
 
-        // Type combo
+        // Type combo — record label start for this slot before incrementing
+        fxLabelStart[i] = labelIdx;
         labels[labelIdx]->setBounds (x, y, comboW, kLabelH);
         fxTypeBox[i].setBounds (x, y + kLabelH, comboW, kComboH);
         labelIdx++;
@@ -350,6 +359,39 @@ void SubtreactionalAudioProcessorEditor::layoutFx (int px, int py, int pw, int p
         nextKnob (fxChorusDepth[i],  labels[labelIdx++]);
         nextKnob (fxReverbT60[i],    labels[labelIdx++]);
     }
+}
+
+//==============================================================================
+void SubtreactionalAudioProcessorEditor::updateFxVisibility (int i)
+{
+    // Read current type from APVTS (0=Off, 1=Delay, 2=Chorus, 3=Reverb)
+    int type = (int) processor.apvts
+                   .getRawParameterValue ("fx" + juce::String (i) + "_type")
+                   ->load();
+
+    // Labels relative to fxLabelStart[i]:
+    //  +0 = Type  +1 = Mix  +2 = DelayTime  +3 = DelayFb
+    //  +4 = ChorusRate  +5 = ChorusDepth  +6 = ReverbT60
+    int li = fxLabelStart[i];
+
+    auto setVis = [&](juce::Slider& s, int offset, bool visible)
+    {
+        s.setVisible (visible);
+        if (li + offset < labels.size())
+            labels[li + offset]->setVisible (visible);
+    };
+
+    bool isOn     = (type != 0);
+    bool isDelay  = (type == 1);
+    bool isChorus = (type == 2);
+    bool isReverb = (type == 3);
+
+    setVis (fxMix[i],          1, isOn);
+    setVis (fxDelayTime[i],    2, isDelay);
+    setVis (fxDelayFb[i],      3, isDelay);
+    setVis (fxChorusRate[i],   4, isChorus);
+    setVis (fxChorusDepth[i],  5, isChorus);
+    setVis (fxReverbT60[i],    6, isReverb);
 }
 
 //==============================================================================
