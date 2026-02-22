@@ -15,27 +15,34 @@ interface ParamDef {
   options?: string[];
 }
 
-const OSC_TYPES = ['Off', 'Saw', 'Square', 'Sine', 'Tri'];
+const OSC_TYPES = ['Off', 'Saw', 'Square', 'Sine', 'Tri', 'Noise'];
 const FILTER_TYPES = ['Off', 'LP', 'HP', 'BP'];
-const FX_TYPES = ['Off', 'Delay', 'Chorus', 'Reverb'];
+const FX_TYPES = ['Off', 'Delay', 'Chorus', 'Reverb', 'Distortion'];
 const VOICE_COUNTS = Array.from({ length: 16 }, (_, i) => String(i + 1)); // '1' to '16'
 
 const PARAMS: ParamDef[] = [
   // OSC 1
-  { id: 'osc1_type',   label: 'OSC1 Type',   min: 0, max: 4, defaultValue: 1, type: 'combo', options: OSC_TYPES },
-  { id: 'osc1_level',  label: 'Level',       min: 0, max: 1, defaultValue: 0.7, type: 'slider' },
-  { id: 'osc1_detune', label: 'Detune',      min: -50, max: 50, defaultValue: 0, type: 'slider' },
-  { id: 'osc1_octave', label: 'Octave',      min: -2, max: 2, defaultValue: 0, step: 1, type: 'slider' },
+  { id: 'osc1_type',         label: 'OSC1 Type',  min: 0, max: 5, defaultValue: 1, type: 'combo', options: OSC_TYPES },
+  { id: 'osc1_level',        label: 'Level',      min: 0, max: 1, defaultValue: 0.7, type: 'slider' },
+  { id: 'osc1_detune',       label: 'Detune',     min: -50, max: 50, defaultValue: 0, type: 'slider' },
+  { id: 'osc1_octave',       label: 'Octave',     min: -2, max: 2, defaultValue: 0, step: 1, type: 'slider' },
+  { id: 'osc1_pulse_width',  label: 'Pulse',      min: 0, max: 1, defaultValue: 0.5, type: 'slider' },
   // OSC 2
-  { id: 'osc2_type',   label: 'OSC2 Type',   min: 0, max: 4, defaultValue: 0, type: 'combo', options: OSC_TYPES },
-  { id: 'osc2_level',  label: 'Level',       min: 0, max: 1, defaultValue: 0, type: 'slider' },
-  { id: 'osc2_detune', label: 'Detune',      min: -50, max: 50, defaultValue: 0, type: 'slider' },
-  { id: 'osc2_octave', label: 'Octave',      min: -2, max: 2, defaultValue: 0, step: 1, type: 'slider' },
+  { id: 'osc2_type',         label: 'OSC2 Type',  min: 0, max: 5, defaultValue: 0, type: 'combo', options: OSC_TYPES },
+  { id: 'osc2_level',        label: 'Level',      min: 0, max: 1, defaultValue: 0, type: 'slider' },
+  { id: 'osc2_detune',       label: 'Detune',     min: -50, max: 50, defaultValue: 0, type: 'slider' },
+  { id: 'osc2_octave',       label: 'Octave',     min: -2, max: 2, defaultValue: 0, step: 1, type: 'slider' },
+  { id: 'osc2_pulse_width',  label: 'Pulse',      min: 0, max: 1, defaultValue: 0.5, type: 'slider' },
+  // Sub Oscillator
+  { id: 'sub_level',         label: 'Sub',        min: 0, max: 1, defaultValue: 0, type: 'slider' },
   // Filter
-  { id: 'filter_type',       label: 'Type',    min: 0, max: 3, defaultValue: 1, type: 'combo', options: FILTER_TYPES },
-  { id: 'filter_cutoff',     label: 'Cutoff',  min: 20, max: 20000, defaultValue: 2000, type: 'slider' },
-  { id: 'filter_resonance',  label: 'Res',     min: 0, max: 1, defaultValue: 0.3, type: 'slider' },
-  { id: 'filter_env_amount', label: 'Env Amt', min: 0, max: 1, defaultValue: 0, type: 'slider' },
+  { id: 'filter_type',       label: 'Type',       min: 0, max: 3, defaultValue: 1, type: 'combo', options: FILTER_TYPES },
+  { id: 'filter_cutoff',     label: 'Cutoff',     min: 20, max: 20000, defaultValue: 2000, type: 'slider' },
+  { id: 'filter_resonance',  label: 'Res',        min: 0, max: 1, defaultValue: 0.3, type: 'slider' },
+  { id: 'filter_env_amount', label: 'Env Amt',    min: 0, max: 1, defaultValue: 0, type: 'slider' },
+  { id: 'filter_vel_amount', label: 'Vel Amt',    min: 0, max: 1, defaultValue: 0, type: 'slider' },
+  // Ring Modulation
+  { id: 'ring_mod',          label: 'Ring Mod',   min: 0, max: 1, defaultValue: 0, type: 'slider' },
   // Filter envelope
   { id: 'fenv_attack',  label: 'Atk', min: 1, max: 5000, defaultValue: 10,  type: 'slider' },
   { id: 'fenv_decay',   label: 'Dec', min: 1, max: 5000, defaultValue: 300, type: 'slider' },
@@ -48,16 +55,19 @@ const PARAMS: ParamDef[] = [
   { id: 'aenv_release', label: 'Rel', min: 1, max: 5000, defaultValue: 500, type: 'slider' },
   // FX slots
   ...([0, 1, 2, 3] as const).flatMap((i) => [
-    { id: `fx${i}_type`,           label: `FX${i} Type`,  min: 0, max: 3,    defaultValue: 0,   type: 'combo' as const, options: FX_TYPES },
-    { id: `fx${i}_mix`,            label: 'Mix',          min: 0, max: 1,    defaultValue: 0.3, type: 'slider' as const },
-    { id: `fx${i}_delay_time`,     label: 'Dly Time',     min: 10, max: 1000, defaultValue: 250, type: 'slider' as const },
-    { id: `fx${i}_delay_feedback`, label: 'Dly Fb',       min: 0, max: 0.99, defaultValue: 0.3, type: 'slider' as const },
-    { id: `fx${i}_chorus_rate`,    label: 'Chr Rate',     min: 0.1, max: 10, defaultValue: 0.5, type: 'slider' as const },
-    { id: `fx${i}_chorus_depth`,   label: 'Chr Depth',    min: 0, max: 1,    defaultValue: 0.4, type: 'slider' as const },
-    { id: `fx${i}_reverb_t60`,     label: 'Rvb T60',      min: 0.1, max: 10, defaultValue: 2.0, type: 'slider' as const },
+    { id: `fx${i}_type`,            label: `FX${i} Type`,  min: 0, max: 4,    defaultValue: 0,   type: 'combo' as const, options: FX_TYPES },
+    { id: `fx${i}_mix`,             label: 'Mix',          min: 0, max: 1,    defaultValue: 0.3, type: 'slider' as const },
+    { id: `fx${i}_delay_time`,      label: 'Dly Time',     min: 10, max: 1000, defaultValue: 250, type: 'slider' as const },
+    { id: `fx${i}_delay_feedback`,  label: 'Dly Fb',       min: 0, max: 0.99, defaultValue: 0.3, type: 'slider' as const },
+    { id: `fx${i}_chorus_rate`,     label: 'Chr Rate',     min: 0.1, max: 10, defaultValue: 0.5, type: 'slider' as const },
+    { id: `fx${i}_chorus_depth`,    label: 'Chr Depth',    min: 0, max: 1,    defaultValue: 0.4, type: 'slider' as const },
+    { id: `fx${i}_reverb_t60`,      label: 'Rvb T60',      min: 0.1, max: 10, defaultValue: 2.0, type: 'slider' as const },
+    { id: `fx${i}_distortion_drive`, label: 'Dist',        min: 0, max: 10,   defaultValue: 1.0, type: 'slider' as const },
   ]),
   // Master
-  { id: 'master_volume', label: 'Master', min: 0, max: 1, defaultValue: 0.8, type: 'slider' },
+  { id: 'master_volume',       label: 'Master', min: 0, max: 1, defaultValue: 0.8, type: 'slider' },
+  { id: 'pitch_bend_range',    label: 'Pitch Bend', min: 0, max: 24, defaultValue: 2, step: 1, type: 'slider' },
+  { id: 'portamento_time',     label: 'Portamento', min: 0, max: 1000, defaultValue: 0, type: 'slider' },
   // Voice count
   { id: 'num_voices', label: 'Voices', min: 0, max: 15, defaultValue: 7, type: 'combo', options: VOICE_COUNTS },
 ];
@@ -826,9 +836,10 @@ leftCol.appendChild(topRow);
   panel.style.minWidth = '110px';
   panel.appendChild(buildDropdown('osc1_type', 92));
   panel.appendChild(makeKnobsRow(
-    buildKnob('osc1_level', 44),
-    buildKnob('osc1_detune', 44),
-    buildKnob('osc1_octave', 44),
+    buildKnob('osc1_level', 40),
+    buildKnob('osc1_detune', 40),
+    buildKnob('osc1_octave', 40),
+    buildKnob('osc1_pulse_width', 40),
   ));
   topRow.appendChild(panel);
 }
@@ -839,9 +850,21 @@ leftCol.appendChild(topRow);
   panel.style.minWidth = '110px';
   panel.appendChild(buildDropdown('osc2_type', 92));
   panel.appendChild(makeKnobsRow(
-    buildKnob('osc2_level', 44),
-    buildKnob('osc2_detune', 44),
-    buildKnob('osc2_octave', 44),
+    buildKnob('osc2_level', 40),
+    buildKnob('osc2_detune', 40),
+    buildKnob('osc2_octave', 40),
+    buildKnob('osc2_pulse_width', 40),
+  ));
+  topRow.appendChild(panel);
+}
+
+// Sub + Ring Mod
+{
+  const { panel } = makePanel('Mod');
+  panel.style.minWidth = '90px';
+  panel.appendChild(makeKnobsRow(
+    buildKnob('sub_level', 40),
+    buildKnob('ring_mod', 40),
   ));
   topRow.appendChild(panel);
 }
@@ -855,6 +878,7 @@ leftCol.appendChild(topRow);
     buildKnob('filter_cutoff', 44),
     buildKnob('filter_resonance', 44),
     buildKnob('filter_env_amount', 44),
+    buildKnob('filter_vel_amount', 44),
   ));
   topRow.appendChild(panel);
 }
@@ -907,7 +931,8 @@ for (let i = 0; i < 4; i++) {
   // FX type dropdown
   const typeRow = document.createElement('div');
   typeRow.className = 'fx-row';
-  typeRow.appendChild(buildDropdown(`fx${i}_type`, 80));
+  typeRow.appendChild(buildDropdown(`fx${i}_type`, 120));
+
   panel.appendChild(typeRow);
 
   // Mix knob (shown for all non-Off types)
@@ -936,12 +961,19 @@ for (let i = 0; i < 4; i++) {
   reverbRow.appendChild(buildKnob(`fx${i}_reverb_t60`, 34));
   panel.appendChild(reverbRow);
 
-  // Show/hide rows based on FX type: 0=Off, 1=Delay, 2=Chorus, 3=Reverb
+  // Distortion params
+  const distortionRow = document.createElement('div');
+  distortionRow.className = 'knobs-row';
+  distortionRow.appendChild(buildKnob(`fx${i}_distortion_drive`, 34));
+  panel.appendChild(distortionRow);
+
+  // Show/hide rows based on FX type: 0=Off, 1=Delay, 2=Chorus, 3=Reverb, 4=Distortion
   function updateFxVisibility(typeIndex: number) {
-    mixRow.style.display    = typeIndex === 0 ? 'none' : 'flex';
-    delayRow.style.display  = typeIndex === 1 ? 'flex' : 'none';
-    chorusRow.style.display = typeIndex === 2 ? 'flex' : 'none';
-    reverbRow.style.display = typeIndex === 3 ? 'flex' : 'none';
+    mixRow.style.display       = typeIndex === 0 ? 'none' : 'flex';
+    delayRow.style.display     = typeIndex === 1 ? 'flex' : 'none';
+    chorusRow.style.display    = typeIndex === 2 ? 'flex' : 'none';
+    reverbRow.style.display    = typeIndex === 3 ? 'flex' : 'none';
+    distortionRow.style.display = typeIndex === 4 ? 'flex' : 'none';
   }
 
   updateFxVisibility(0); // default: Off
@@ -987,6 +1019,12 @@ for (let i = 0; i < 4; i++) {
   voicesWrap.appendChild(voicesLabel);
   voicesWrap.appendChild(buildDropdown('num_voices', 60));
   masterWrap.appendChild(voicesWrap);
+
+  // Pitch Bend Range knob
+  masterWrap.appendChild(buildKnob('pitch_bend_range', 40));
+
+  // Portamento Time knob
+  masterWrap.appendChild(buildKnob('portamento_time', 40));
 
   masterPanel.appendChild(masterWrap);
   rightCol.appendChild(masterPanel);

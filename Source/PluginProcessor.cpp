@@ -18,16 +18,23 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "osc1_level",          "osc1.level" },
     { "osc1_detune",         "osc1.detune" },
     { "osc1_octave",         "osc1.octave" },
+    { "osc1_pulse_width",    "osc1.pulse_width" },
     // OSC 2
     { "osc2_type",           "osc2.type" },
     { "osc2_level",          "osc2.level" },
     { "osc2_detune",         "osc2.detune" },
-    { "osc2_octave",         "osc2.octave" },
+    { "osc2_octave",         "osc2_octave" },
+    { "osc2_pulse_width",    "osc2.pulse_width" },
+    // Sub Oscillator
+    { "sub_level",           "sub.level" },
     // Filter
     { "filter_type",         "filter.type" },
     { "filter_cutoff",       "filter.cutoff" },
     { "filter_resonance",    "filter.resonance" },
     { "filter_env_amount",   "filter.env_amount" },
+    { "filter_vel_amount",   "filter.vel_amount" },
+    // Ring Modulation
+    { "ring_mod",            "ring_mod" },
     // Filter envelope
     { "fenv_attack",         "filter_env.attack" },
     { "fenv_decay",          "filter_env.decay" },
@@ -70,8 +77,11 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "fx3_chorus_rate",     "fx3.chorus_rate" },
     { "fx3_chorus_depth",    "fx3.chorus_depth" },
     { "fx3_reverb_t60",      "fx3.reverb_t60" },
+    { "fx3_distortion_drive", "fx3.distortion_drive" },
     // Master
     { "master_volume",       "master_volume" },
+    { "pitch_bend_range",    "pitch_bend_range" },
+    { "portamento_time",     "portamento_time" },
     // Voice count
     { "num_voices",          "num_voices" },
 };
@@ -103,22 +113,31 @@ SubtreactionalAudioProcessor::createParameterLayout()
     };
 
     // OSC 1  (default: saw, full level)
-    addCombo ("osc1_type",   {"Off","Saw","Square","Sine","Tri"}, 1);
+    addCombo ("osc1_type",   {"Off","Saw","Square","Sine","Tri","Noise"}, 1);
     addSlider("osc1_level",  0.0f, 1.0f, 0.7f, 0.001f);
     addSlider("osc1_detune", -50.0f, 50.0f, 0.0f, 0.1f);
     addSlider("osc1_octave", -2.0f, 2.0f, 0.0f, 1.0f);
+    addSlider("osc1_pulse_width", 0.0f, 1.0f, 0.5f, 0.001f);
 
     // OSC 2  (default: off)
-    addCombo ("osc2_type",   {"Off","Saw","Square","Sine","Tri"}, 0);
+    addCombo ("osc2_type",   {"Off","Saw","Square","Sine","Tri","Noise"}, 0);
     addSlider("osc2_level",  0.0f, 1.0f, 0.0f, 0.001f);
     addSlider("osc2_detune", -50.0f, 50.0f, 0.0f, 0.1f);
     addSlider("osc2_octave", -2.0f, 2.0f, 0.0f, 1.0f);
+    addSlider("osc2_pulse_width", 0.0f, 1.0f, 0.5f, 0.001f);
+
+    // Sub Oscillator
+    addSlider("sub_level", 0.0f, 1.0f, 0.0f, 0.001f);
 
     // Filter
     addCombo ("filter_type",       {"Off","LP","HP","BP"}, 1);
     addSlider("filter_cutoff",     20.0f, 20000.0f, 2000.0f, 0.0f, 0.25f);
     addSlider("filter_resonance",  0.0f, 1.0f, 0.3f, 0.001f);
     addSlider("filter_env_amount", 0.0f, 1.0f, 0.0f, 0.001f);
+    addSlider("filter_vel_amount", 0.0f, 1.0f, 0.0f, 0.001f);
+
+    // Ring Modulation
+    addSlider("ring_mod", 0.0f, 1.0f, 0.0f, 0.001f);
 
     // Filter envelope
     addSlider("fenv_attack",  1.0f, 5000.0f, 10.0f,  0.0f, 0.25f);
@@ -133,7 +152,7 @@ SubtreactionalAudioProcessor::createParameterLayout()
     addSlider("aenv_release", 1.0f, 5000.0f, 500.0f, 0.0f, 0.25f);
 
     // FX slots 0..3
-    const juce::StringArray fxTypes { "Off","Delay","Chorus","Reverb" };
+    const juce::StringArray fxTypes { "Off","Delay","Chorus","Reverb","Distortion" };
     for (int i = 0; i < 4; ++i)
     {
         juce::String fx = "fx" + juce::String(i) + "_";
@@ -144,10 +163,17 @@ SubtreactionalAudioProcessor::createParameterLayout()
         addSlider((fx + "chorus_rate").toRawUTF8(),    0.1f, 10.0f,   0.5f, 0.01f);
         addSlider((fx + "chorus_depth").toRawUTF8(),   0.0f,  1.0f,   0.4f, 0.001f);
         addSlider((fx + "reverb_t60").toRawUTF8(),     0.1f, 10.0f,   2.0f, 0.01f);
+        addSlider((fx + "distortion_drive").toRawUTF8(), 0.0f, 10.0f, 1.0f, 0.01f);
     }
 
     // Master volume
     addSlider("master_volume", 0.0f, 1.0f, 0.8f, 0.001f);
+
+    // Pitch bend range (semitones: 0-24, default 2)
+    addSlider("pitch_bend_range", 0.0f, 24.0f, 2.0f, 1.0f);
+
+    // Portamento time (ms: 0-1000, default 0)
+    addSlider("portamento_time", 0.0f, 1000.0f, 0.0f, 1.0f);
 
     // Voice count (1-16, default 8)
     juce::StringArray voiceChoices;
