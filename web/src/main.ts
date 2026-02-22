@@ -18,6 +18,8 @@ interface ParamDef {
 const OSC_TYPES = ['Off', 'Saw', 'Square', 'Sine', 'Tri', 'Noise'];
 const FILTER_TYPES = ['Off', 'LP', 'HP', 'BP'];
 const FX_TYPES = ['Off', 'Delay', 'Chorus', 'Reverb', 'Distortion'];
+const LFO_SHAPES = ['Sine', 'Tri', 'Saw', 'Square'];
+const LFO_DESTS = ['Off', 'Pitch', 'Cutoff', 'Amp', 'PWM'];
 const VOICE_COUNTS = Array.from({ length: 16 }, (_, i) => String(i + 1)); // '1' to '16'
 
 const PARAMS: ParamDef[] = [
@@ -70,6 +72,11 @@ const PARAMS: ParamDef[] = [
   { id: 'portamento_time',     label: 'Portamento', min: 0, max: 1000, defaultValue: 0, type: 'slider' },
   // Voice count
   { id: 'num_voices', label: 'Voices', min: 0, max: 15, defaultValue: 7, type: 'combo', options: VOICE_COUNTS },
+  // LFO
+  { id: 'lfo_rate',  label: 'Rate', min: 0.1, max: 20, defaultValue: 1, type: 'slider' },
+  { id: 'lfo_depth', label: 'Depth', min: 0, max: 1, defaultValue: 0, type: 'slider' },
+  { id: 'lfo_shape', label: 'Shape', min: 0, max: 3, defaultValue: 0, type: 'combo', options: LFO_SHAPES },
+  { id: 'lfo_dest',  label: 'Dest', min: 0, max: 4, defaultValue: 0, type: 'combo', options: LFO_DESTS },
 ];
 
 // ---------------------------------------------------------------------------
@@ -257,6 +264,7 @@ style.textContent = `
   }
 
   .dropdown-label {
+    display: none;
     font-size: 9px;
     color: ${C.white48};
     text-transform: uppercase;
@@ -307,7 +315,7 @@ style.textContent = `
     border: 1px solid ${C.offDark3};
     border-radius: 4px;
     z-index: 100;
-    max-height: 120px;
+    max-height: 100px;
     overflow-y: auto;
     display: none;
   }
@@ -336,6 +344,7 @@ style.textContent = `
     gap: 4px;
     flex: 1;
     min-width: 0;
+    height: 100%;
     padding: 6px 8px;
   }
 
@@ -356,6 +365,7 @@ style.textContent = `
     justify-content: center;
     flex-direction: column;
     gap: 4px;
+    height: 100%;
     padding: 6px 10px;
   }
 
@@ -833,7 +843,7 @@ leftCol.appendChild(topRow);
 // OSC 1
 {
   const { panel } = makePanel('OSC 1');
-  panel.style.minWidth = '110px';
+  panel.style.minWidth = '210px';
   panel.appendChild(buildDropdown('osc1_type', 92));
   panel.appendChild(makeKnobsRow(
     buildKnob('osc1_level', 40),
@@ -847,7 +857,7 @@ leftCol.appendChild(topRow);
 // OSC 2
 {
   const { panel } = makePanel('OSC 2');
-  panel.style.minWidth = '110px';
+  panel.style.minWidth = '210px';
   panel.appendChild(buildDropdown('osc2_type', 92));
   panel.appendChild(makeKnobsRow(
     buildKnob('osc2_level', 40),
@@ -864,6 +874,8 @@ leftCol.appendChild(topRow);
   panel.style.minWidth = '90px';
   panel.appendChild(makeKnobsRow(
     buildKnob('sub_level', 40),
+  ));
+    panel.appendChild(makeKnobsRow(
     buildKnob('ring_mod', 40),
   ));
   topRow.appendChild(panel);
@@ -872,7 +884,7 @@ leftCol.appendChild(topRow);
 // Filter
 {
   const { panel } = makePanel('Filter');
-  panel.style.minWidth = '120px';
+  panel.style.minWidth = '220px';
   panel.appendChild(buildDropdown('filter_type', 92));
   panel.appendChild(makeKnobsRow(
     buildKnob('filter_cutoff', 44),
@@ -891,6 +903,8 @@ leftCol.appendChild(envRow);
 // Filter Env
 {
   const { panel } = makePanel('Filter Env');
+  panel.style.minWidth = '210px';
+  panel.style.minHeight = '120px';
   panel.appendChild(makeKnobsRow(
     buildKnob('fenv_attack', 40),
     buildKnob('fenv_decay', 40),
@@ -903,11 +917,26 @@ leftCol.appendChild(envRow);
 // Amp Env
 {
   const { panel } = makePanel('Amp Env');
+  panel.style.minWidth = '210px';
   panel.appendChild(makeKnobsRow(
     buildKnob('aenv_attack', 40),
     buildKnob('aenv_decay', 40),
     buildKnob('aenv_sustain', 40),
     buildKnob('aenv_release', 40),
+  ));
+  envRow.appendChild(panel);
+}
+
+// LFO
+{
+  const { panel } = makePanel('LFO');
+  panel.style.minWidth = '100px';
+  panel.appendChild(makeKnobsRow(
+    buildKnob('lfo_rate', 40),
+    buildKnob('lfo_depth', 40),
+  
+    buildDropdown('lfo_shape', 60),
+    buildDropdown('lfo_dest', 60),
   ));
   envRow.appendChild(panel);
 }
@@ -931,14 +960,14 @@ for (let i = 0; i < 4; i++) {
   // FX type dropdown
   const typeRow = document.createElement('div');
   typeRow.className = 'fx-row';
-  typeRow.appendChild(buildDropdown(`fx${i}_type`, 120));
-
+  typeRow.appendChild(buildKnob(`fx${i}_mix`, 36));
+  typeRow.appendChild(buildDropdown(`fx${i}_type`, 80));
   panel.appendChild(typeRow);
 
   // Mix knob (shown for all non-Off types)
   const mixRow = document.createElement('div');
   mixRow.className = 'knobs-row';
-  mixRow.appendChild(buildKnob(`fx${i}_mix`, 36));
+  // mixRow.appendChild(buildKnob(`fx${i}_mix`, 36));
   panel.appendChild(mixRow);
 
   // Delay params

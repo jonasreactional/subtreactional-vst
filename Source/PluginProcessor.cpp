@@ -84,6 +84,11 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "portamento_time",     "portamento_time" },
     // Voice count
     { "num_voices",          "num_voices" },
+    // LFO
+    { "lfo_rate",            "lfo.rate" },
+    { "lfo_depth",           "lfo.depth" },
+    { "lfo_shape",           "lfo.shape" },
+    { "lfo_dest",            "lfo.dest" },
 };
 
 const int SubtreactionalAudioProcessor::kNumParams =
@@ -180,6 +185,14 @@ SubtreactionalAudioProcessor::createParameterLayout()
     for (int i = 1; i <= 16; ++i)
         voiceChoices.add(juce::String(i));
     addCombo("num_voices", voiceChoices, 7); // index 7 = 8 voices
+
+    // LFO (sine, tri, saw, square; none, pitch, cutoff, amp, pwm)
+    juce::StringArray lfoShapes { "Sine", "Tri", "Saw", "Square" };
+    juce::StringArray lfoDests { "Off", "Pitch", "Cutoff", "Amp", "PWM" };
+    addSlider("lfo_rate",  0.1f, 20.0f, 1.0f,  0.1f);
+    addSlider("lfo_depth", 0.0f, 1.0f,  0.0f,  0.001f);
+    addCombo("lfo_shape",  lfoShapes, 0); // default: Sine
+    addCombo("lfo_dest",   lfoDests,  0); // default: Off
 
     return { params.begin(), params.end() };
 }
