@@ -1,4 +1,4 @@
-import { setParam, onParam, onWaveform, onSpectrogram } from './bridge';
+import { setParam, onParam, onWaveform, onSpectrogram, notifyHostReady } from './bridge';
 
 // ---------------------------------------------------------------------------
 // Parameter definitions — mirrors PluginProcessor.cpp kParams
@@ -376,13 +376,13 @@ style.textContent = `
   }
 
   .analyzer-panel {
-    min-height: 124px;
-    padding-bottom: 8px;
+    padding-bottom: 0px;
+    
   }
 
   .analyzer-views {
     display: flex;
-    gap: 6px;
+    gap: 6 px;
   }
 
   .analyzer-view {
@@ -397,7 +397,7 @@ style.textContent = `
     height: 82px;
     flex: 0 0 auto;
     border: 1px solid ${C.offDark3};
-    border-radius: 4px;
+    border-radius: 10px;
     background: ${C.offDark};
     overflow: hidden;
   }
@@ -1150,7 +1150,7 @@ leftCol.appendChild(envRow);
     buildKnob('lfo_depth', 30),
   
     buildDropdown('lfo_shape', 40),
-    buildDropdown('lfo_dest', 40),
+    buildDropdown('lfo_dest', 50),
   ));
   envRow.appendChild(panel);
 }
@@ -1274,3 +1274,5 @@ for (let i = 0; i < 4; i++) {
   masterPanel.appendChild(masterWrap);
   rightCol.appendChild(masterPanel);
 }
+
+notifyHostReady();

@@ -95,6 +95,13 @@ void JuceBridge::pushAllParams()
 //==============================================================================
 bool JuceBridge::pageAboutToLoad (const juce::String& newURL)
 {
+    // Intercept  juce://ready  and send current state once JS has fully booted.
+    if (newURL.startsWith ("juce://ready"))
+    {
+        pushAllParams();
+        return false; // cancel navigation
+    }
+
     // Intercept  juce://param?id=<id>&v=<value>
     if (newURL.startsWith ("juce://param"))
     {
