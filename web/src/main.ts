@@ -376,45 +376,37 @@ style.textContent = `
   }
 
   .analyzer-panel {
-    min-height: 80px;
+    min-height: 124px;
     padding-bottom: 8px;
   }
 
-  .analyzer-mode-row {
-    display: visible;
-    height: 0px;
-    padding-top: 0px;
+  .analyzer-views {
+    display: flex;
     gap: 6px;
-    z-index: 1;
   }
 
-  .analyzer-mode-btn {
-    background: ${C.offDark};
-    border: 1px solid ${C.offDark3};
-    border-radius: 4px;
-    color: ${C.white48};
-    font-size: 10px;
-    height: 22px;
-    padding: 0 8px;
-    cursor: pointer;
-    font-family: 'Inter', system-ui, sans-serif;
-    letter-spacing: 0.5px;
-  }
-
-  .analyzer-mode-btn.active {
-    color: ${C.offWhite};
-    border-color: ${C.purple};
-    box-shadow: inset 0 0 0 1px ${C.purpleGlow};
+  .analyzer-view {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
   }
 
   .analyzer-canvas-wrap {
-    flex: 1;
-    min-height: 0;
+    width: 82px;
+    height: 82px;
+    flex: 0 0 auto;
     border: 1px solid ${C.offDark3};
     border-radius: 4px;
     background: ${C.offDark};
     overflow: hidden;
-    width: 180px;
+  }
+
+  .analyzer-label {
+    font-size: 9px;
+    color: ${C.white48};
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .analyzer-canvas {
@@ -879,38 +871,40 @@ function makeKnobsRow(...els: HTMLElement[]): HTMLElement {
 function makeAnalyzerPanel(): HTMLElement {
   const { panel } = makePanel('Analyzer', 'analyzer-panel');
 
-  const modeRow = document.createElement('div');
-  modeRow.className = 'analyzer-mode-row';
+  const views = document.createElement('div');
+  views.className = 'analyzer-views';
+  panel.appendChild(views);
 
-  const waveformBtn = document.createElement('button');
-  waveformBtn.type = 'button';
-  waveformBtn.className = 'analyzer-mode-btn active';
-  waveformBtn.textContent = 'Waveform';
+  function makeAnalyzerView(label: string): { wrap: HTMLElement; canvasWrap: HTMLElement; canvas: HTMLCanvasElement } {
+    const wrap = document.createElement('div');
+    wrap.className = 'analyzer-view';
 
-  const spectrogramBtn = document.createElement('button');
-  spectrogramBtn.type = 'button';
-  spectrogramBtn.className = 'analyzer-mode-btn';
-  spectrogramBtn.textContent = 'Spectrogram';
+    const canvasWrap = document.createElement('div');
+    canvasWrap.className = 'analyzer-canvas-wrap';
 
-  modeRow.appendChild(waveformBtn);
-  modeRow.appendChild(spectrogramBtn);
-  panel.appendChild(modeRow);
+    const canvas = document.createElement('canvas');
+    canvas.className = 'analyzer-canvas';
+    canvasWrap.appendChild(canvas);
 
-  const canvasWrap = document.createElement('div');
-  canvasWrap.className = 'analyzer-canvas-wrap';
-  canvasWrap.style.height = '82px';
+    const labelEl = document.createElement('div');
+    labelEl.className = 'analyzer-label';
+    labelEl.textContent = label;
 
-  const canvas = document.createElement('canvas');
-  canvas.className = 'analyzer-canvas';
-  canvasWrap.appendChild(canvas);
-  panel.appendChild(canvasWrap);
+    wrap.appendChild(canvasWrap);
+    wrap.appendChild(labelEl);
+    return { wrap, canvasWrap, canvas };
+  }
 
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return panel;
-  const renderCtx = ctx;
+  const waveformView = makeAnalyzerView(''); // no title for now, could be "Waveform"
+  const spectrogramView = makeAnalyzerView(''); // no title for now, could be "Spectrogram"
+  views.appendChild(waveformView.wrap);
+  views.appendChild(spectrogramView.wrap);
 
-  type Mode = 'waveform' | 'spectrogram';
-  let mode: Mode = 'waveform';
+  const waveformCtx = waveformView.canvas.getContext('2d');
+  const spectrogramCtx = spectrogramView.canvas.getContext('2d');
+  if (!waveformCtx || !spectrogramCtx) return panel;
+  const waveformRenderCtx = waveformCtx;
+  const spectrogramRenderCtx = spectrogramCtx;
 
   let waveformValues: number[] = Array.from({ length: 256 }, () => 0);
   let spectrogramValues: number[] = Array.from({ length: 96 }, () => 0);
@@ -919,16 +913,7 @@ function makeAnalyzerPanel(): HTMLElement {
   let imageHeight = 0;
   let spectrogramImage: Uint8ClampedArray | null = null;
 
-  function setMode(nextMode: Mode) {
-    mode = nextMode;
-    waveformBtn.classList.toggle('active', mode === 'waveform');
-    spectrogramBtn.classList.toggle('active', mode === 'spectrogram');
-  }
-
-  waveformBtn.addEventListener('click', () => setMode('waveform'));
-  spectrogramBtn.addEventListener('click', () => setMode('spectrogram'));
-
-  function ensureCanvasSize() {
+  function ensureCanvasSize(canvasWrap: HTMLElement, canvas: HTMLCanvasElement): [number, number] {
     const dpr = Math.max(1, window.devicePixelRatio || 1);
     const rect = canvasWrap.getBoundingClientRect();
     const w = Math.max(2, Math.floor(rect.width * dpr));
@@ -937,6 +922,14 @@ function makeAnalyzerPanel(): HTMLElement {
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w;
       canvas.height = h;
+    }
+
+    return [w, h];
+  }
+
+  function ensureSpectrogramSize() {
+    const [w, h] = ensureCanvasSize(spectrogramView.canvasWrap, spectrogramView.canvas);
+    if (w !== imageWidth || h !== imageHeight || !spectrogramImage) {
       imageWidth = w;
       imageHeight = h;
       spectrogramImage = new Uint8ClampedArray(imageWidth * imageHeight * 4);
@@ -973,7 +966,7 @@ function makeAnalyzerPanel(): HTMLElement {
   }
 
   function pushSpectrogramColumn() {
-    ensureCanvasSize();
+    ensureSpectrogramSize();
     if (!spectrogramImage || imageWidth < 2 || imageHeight < 2) return;
 
     for (let y = 0; y < imageHeight; y++) {
@@ -996,47 +989,43 @@ function makeAnalyzerPanel(): HTMLElement {
   }
 
   function drawWaveform() {
-    const w = canvas.width;
-    const h = canvas.height;
+    const [w, h] = ensureCanvasSize(waveformView.canvasWrap, waveformView.canvas);
     if (w <= 2 || h <= 2) return;
 
-    renderCtx.clearRect(0, 0, w, h);
+    waveformRenderCtx.clearRect(0, 0, w, h);
 
-    renderCtx.strokeStyle = C.white24;
-    renderCtx.lineWidth = Math.max(1, Math.floor(window.devicePixelRatio || 1));
-    renderCtx.beginPath();
-    renderCtx.moveTo(0, h * 0.5);
-    renderCtx.lineTo(w, h * 0.5);
-    renderCtx.stroke();
+    waveformRenderCtx.strokeStyle = C.white24;
+    waveformRenderCtx.lineWidth = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+    waveformRenderCtx.beginPath();
+    waveformRenderCtx.moveTo(0, h * 0.5);
+    waveformRenderCtx.lineTo(w, h * 0.5);
+    waveformRenderCtx.stroke();
 
-    renderCtx.strokeStyle = C.purple;
-    renderCtx.lineWidth = Math.max(1.2, (window.devicePixelRatio || 1) * 1.1);
-    renderCtx.beginPath();
+    waveformRenderCtx.strokeStyle = C.purple;
+    waveformRenderCtx.lineWidth = Math.max(1.2, (window.devicePixelRatio || 1) * 1.1);
+    waveformRenderCtx.beginPath();
 
     const count = waveformValues.length;
     for (let i = 0; i < count; i++) {
       const x = (i / Math.max(1, count - 1)) * (w - 1);
       const y = (0.5 - (waveformValues[i] ?? 0) * 0.45) * (h - 1);
-      if (i === 0) renderCtx.moveTo(x, y);
-      else renderCtx.lineTo(x, y);
+      if (i === 0) waveformRenderCtx.moveTo(x, y);
+      else waveformRenderCtx.lineTo(x, y);
     }
-    renderCtx.stroke();
+    waveformRenderCtx.stroke();
   }
 
   function drawSpectrogram() {
+    ensureSpectrogramSize();
     if (!spectrogramImage) return;
-    const image = renderCtx.createImageData(imageWidth, imageHeight);
+    const image = spectrogramRenderCtx.createImageData(imageWidth, imageHeight);
     image.data.set(spectrogramImage);
-    renderCtx.putImageData(image, 0, 0);
+    spectrogramRenderCtx.putImageData(image, 0, 0);
   }
 
   function render() {
-    ensureCanvasSize();
-    if (mode === 'waveform') {
-      drawWaveform();
-    } else {
-      drawSpectrogram();
-    }
+    drawWaveform();
+    drawSpectrogram();
     requestAnimationFrame(render);
   }
 
@@ -1098,10 +1087,10 @@ leftCol.appendChild(topRow);
   const { panel } = makePanel('Mod');
   panel.style.minWidth = '90px';
   panel.appendChild(makeKnobsRow(
-    buildKnob('sub_level', 40),
+    buildKnob('sub_level', 30),
   ));
     panel.appendChild(makeKnobsRow(
-    buildKnob('ring_mod', 40),
+    buildKnob('ring_mod', 30),
   ));
   topRow.appendChild(panel);
 }
@@ -1157,8 +1146,8 @@ leftCol.appendChild(envRow);
   const { panel } = makePanel('LFO');
   panel.style.minWidth = '100px';
   panel.appendChild(makeKnobsRow(
-    buildKnob('lfo_rate', 40),
-    buildKnob('lfo_depth', 40),
+    buildKnob('lfo_rate', 30),
+    buildKnob('lfo_depth', 30),
   
     buildDropdown('lfo_shape', 40),
     buildDropdown('lfo_dest', 40),
