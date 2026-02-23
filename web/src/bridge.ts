@@ -14,16 +14,27 @@ declare global {
 
 interface JuceBridgeGlobal {
   onParam(id: string, value: number): void;
+  onWaveform(values: number[]): void;
+  onSpectrogram(values: number[]): void;
 }
 
 type Listener = (value: number) => void;
+type AnalyzerListener = (values: number[]) => void;
 
 const listeners = new Map<string, Set<Listener>>();
+const waveformListeners = new Set<AnalyzerListener>();
+const spectrogramListeners = new Set<AnalyzerListener>();
 
 // Install the global that C++ will call
 window.__juce = {
   onParam(id: string, value: number) {
     listeners.get(id)?.forEach((fn) => fn(value));
+  },
+  onWaveform(values: number[]) {
+    waveformListeners.forEach((fn) => fn(values));
+  },
+  onSpectrogram(values: number[]) {
+    spectrogramListeners.forEach((fn) => fn(values));
   },
 };
 
@@ -37,4 +48,16 @@ export function onParam(id: string, fn: Listener): () => void {
   if (!listeners.has(id)) listeners.set(id, new Set());
   listeners.get(id)!.add(fn);
   return () => listeners.get(id)!.delete(fn);
+}
+
+/** Subscribe to waveform analyzer frames. Returns an unsubscribe function. */
+export function onWaveform(fn: AnalyzerListener): () => void {
+  waveformListeners.add(fn);
+  return () => waveformListeners.delete(fn);
+}
+
+/** Subscribe to spectrogram analyzer frames. Returns an unsubscribe function. */
+export function onSpectrogram(fn: AnalyzerListener): () => void {
+  spectrogramListeners.add(fn);
+  return () => spectrogramListeners.delete(fn);
 }

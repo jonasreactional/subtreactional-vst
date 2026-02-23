@@ -302,6 +302,8 @@ void SubtreactionalAudioProcessor::processBlock (juce::AudioBuffer<float>& buffe
         buffer.getWritePointer (1)
     };
     st_synth_render (&synth, channelPtrs, buffer.getNumSamples());
+
+    pushAnalyzerSamples (buffer);
 }
 
 //==============================================================================
@@ -367,6 +369,58 @@ void SubtreactionalAudioProcessor::syncApvtsFromSynth()
             p->setValueNotifyingHost (p->getNormalisableRange().convertTo0to1 (val));
         }
     }
+}
+
+int SubtreactionalAudioProcessor::popAnalyzerSamples (float* dest, int maxSamples)
+{
+    if (dest == nullptr || maxSamples <= 0)
+        return 0;
+
+    int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
+    analyzerFifo.prepareToRead (maxSamples, start1, size1, start2, size2);
+
+    if (size1 > 0)
+        std::memcpy (dest,
+                     analyzerSampleBuffer.data() + start1,
+                     static_cast<size_t> (size1) * sizeof (float));
+
+    if (size2 > 0)
+        std::memcpy (dest + size1,
+                     analyzerSampleBuffer.data() + start2,
+                     static_cast<size_t> (size2) * sizeof (float));
+
+    analyzerFifo.finishedRead (size1 + size2);
+    return size1 + size2;
+}
+
+void SubtreactionalAudioProcessor::pushAnalyzerSamples (const juce::AudioBuffer<float>& buffer)
+{
+    const int numSamples = buffer.getNumSamples();
+    if (numSamples <= 0 || buffer.getNumChannels() <= 0)
+        return;
+
+    int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
+    analyzerFifo.prepareToWrite (numSamples, start1, size1, start2, size2);
+
+    const float* left = buffer.getReadPointer (0);
+    const float* right = buffer.getNumChannels() > 1 ? buffer.getReadPointer (1) : nullptr;
+
+    auto writeRange = [&](int start, int size, int sourceOffset)
+    {
+        for (int i = 0; i < size; ++i)
+        {
+            const int srcIndex = sourceOffset + i;
+            const float mono = right != nullptr
+                ? 0.5f * (left[srcIndex] + right[srcIndex])
+                : left[srcIndex];
+            analyzerSampleBuffer[static_cast<size_t> (start + i)] = mono;
+        }
+    };
+
+    writeRange (start1, size1, 0);
+    writeRange (start2, size2, size1);
+
+    analyzerFifo.finishedWrite (size1 + size2);
 }
 
 //==============================================================================

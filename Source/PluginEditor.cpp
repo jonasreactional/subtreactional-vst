@@ -1,5 +1,7 @@
 #include "PluginEditor.h"
 
+#include <cmath>
+
 //==============================================================================
 SubtreactionalAudioProcessorEditor::SubtreactionalAudioProcessorEditor (
     SubtreactionalAudioProcessor& p)
@@ -12,11 +14,15 @@ SubtreactionalAudioProcessorEditor::SubtreactionalAudioProcessorEditor (
         processor.apvts.addParameterListener (
             SubtreactionalAudioProcessor::kParams[i].apvtsId, this);
 
+    startTimerHz (30);
+
     setSize (860, 480);
 }
 
 SubtreactionalAudioProcessorEditor::~SubtreactionalAudioProcessorEditor()
 {
+    stopTimer();
+
     for (int i = 0; i < SubtreactionalAudioProcessor::kNumParams; ++i)
         processor.apvts.removeParameterListener (
             SubtreactionalAudioProcessor::kParams[i].apvtsId, this);
@@ -41,4 +47,87 @@ void SubtreactionalAudioProcessorEditor::parameterChanged (
         if (auto* param = processor.apvts.getParameter (parameterID))
             bridge.pushParam (parameterID, param->getValue());
     });
+}
+
+void SubtreactionalAudioProcessorEditor::timerCallback()
+{
+    const int numRead = processor.popAnalyzerSamples (analysisReadBuffer.data(),
+                                                      static_cast<int> (analysisReadBuffer.size()));
+    if (numRead <= 0)
+        return;
+
+    appendAnalysisSamples (analysisReadBuffer.data(), numRead);
+
+    buildWaveformFrame();
+    bridge.pushWaveform (waveformFrame.data(), static_cast<int> (waveformFrame.size()));
+
+    if (buildSpectrogramFrame())
+        bridge.pushSpectrogram (spectrogramFrame.data(), static_cast<int> (spectrogramFrame.size()));
+}
+
+void SubtreactionalAudioProcessorEditor::appendAnalysisSamples (const float* samples, int numSamples)
+{
+    if (samples == nullptr || numSamples <= 0)
+        return;
+
+    const int historySize = static_cast<int> (analysisHistory.size());
+    for (int i = 0; i < numSamples; ++i)
+    {
+        analysisHistory[static_cast<size_t> (historyWritePos)] = samples[i];
+        historyWritePos = (historyWritePos + 1) % historySize;
+        historyCount = juce::jmin (historyCount + 1, historySize);
+    }
+}
+
+void SubtreactionalAudioProcessorEditor::buildWaveformFrame()
+{
+    const int available = historyCount;
+    if (available <= 0)
+    {
+        waveformFrame.fill (0.0f);
+        return;
+    }
+
+    const int windowSamples = juce::jmin (available, kFftSize * 2);
+    const int historySize = static_cast<int> (analysisHistory.size());
+    const int start = (historyWritePos - windowSamples + historySize) % historySize;
+
+    const int points = static_cast<int> (waveformFrame.size());
+    for (int i = 0; i < points; ++i)
+    {
+        const int sourceOffset = (i * (windowSamples - 1)) / juce::jmax (1, points - 1);
+        const int index = (start + sourceOffset) % historySize;
+        waveformFrame[static_cast<size_t> (i)] = analysisHistory[static_cast<size_t> (index)];
+    }
+}
+
+bool SubtreactionalAudioProcessorEditor::buildSpectrogramFrame()
+{
+    if (historyCount < kFftSize)
+        return false;
+
+    fftData.fill (0.0f);
+
+    const int historySize = static_cast<int> (analysisHistory.size());
+    const int start = (historyWritePos - kFftSize + historySize) % historySize;
+    for (int i = 0; i < kFftSize; ++i)
+        fftData[static_cast<size_t> (i)] = analysisHistory[static_cast<size_t> ((start + i) % historySize)];
+
+    fftWindow.multiplyWithWindowingTable (fftData.data(), kFftSize);
+    fft.performFrequencyOnlyForwardTransform (fftData.data());
+
+    const int maxBin = kFftSize / 2;
+    for (int i = 0; i < kSpectrogramBins; ++i)
+    {
+        const float norm = static_cast<float> (i) / static_cast<float> (juce::jmax (1, kSpectrogramBins - 1));
+        const float skewed = std::pow (norm, 2.0f);
+        const int bin = juce::jlimit (1, maxBin - 1,
+                                      static_cast<int> (std::round (skewed * static_cast<float> (maxBin - 1))));
+
+        const float magnitude = fftData[static_cast<size_t> (bin)] / static_cast<float> (kFftSize);
+        const float db = juce::Decibels::gainToDecibels (magnitude, -100.0f);
+        spectrogramFrame[static_cast<size_t> (i)] = juce::jlimit (0.0f, 1.0f, (db + 100.0f) / 100.0f);
+    }
+
+    return true;
 }

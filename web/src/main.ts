@@ -1,4 +1,4 @@
-import { setParam, onParam } from './bridge';
+import { setParam, onParam, onWaveform, onSpectrogram } from './bridge';
 
 // ---------------------------------------------------------------------------
 // Parameter definitions — mirrors PluginProcessor.cpp kParams
@@ -373,6 +373,54 @@ style.textContent = `
   .divider {
     height: 1px;
     background: ${C.offDark3};
+  }
+
+  .analyzer-panel {
+    min-height: 80px;
+    padding-bottom: 8px;
+  }
+
+  .analyzer-mode-row {
+    display: visible;
+    height: 0px;
+    padding-top: 0px;
+    gap: 6px;
+    z-index: 1;
+  }
+
+  .analyzer-mode-btn {
+    background: ${C.offDark};
+    border: 1px solid ${C.offDark3};
+    border-radius: 4px;
+    color: ${C.white48};
+    font-size: 10px;
+    height: 22px;
+    padding: 0 8px;
+    cursor: pointer;
+    font-family: 'Inter', system-ui, sans-serif;
+    letter-spacing: 0.5px;
+  }
+
+  .analyzer-mode-btn.active {
+    color: ${C.offWhite};
+    border-color: ${C.purple};
+    box-shadow: inset 0 0 0 1px ${C.purpleGlow};
+  }
+
+  .analyzer-canvas-wrap {
+    flex: 1;
+    min-height: 0;
+    border: 1px solid ${C.offDark3};
+    border-radius: 4px;
+    background: ${C.offDark};
+    overflow: hidden;
+    width: 180px;
+  }
+
+  .analyzer-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 `;
 document.head.appendChild(style);
@@ -828,6 +876,183 @@ function makeKnobsRow(...els: HTMLElement[]): HTMLElement {
   return row;
 }
 
+function makeAnalyzerPanel(): HTMLElement {
+  const { panel } = makePanel('Analyzer', 'analyzer-panel');
+
+  const modeRow = document.createElement('div');
+  modeRow.className = 'analyzer-mode-row';
+
+  const waveformBtn = document.createElement('button');
+  waveformBtn.type = 'button';
+  waveformBtn.className = 'analyzer-mode-btn active';
+  waveformBtn.textContent = 'Waveform';
+
+  const spectrogramBtn = document.createElement('button');
+  spectrogramBtn.type = 'button';
+  spectrogramBtn.className = 'analyzer-mode-btn';
+  spectrogramBtn.textContent = 'Spectrogram';
+
+  modeRow.appendChild(waveformBtn);
+  modeRow.appendChild(spectrogramBtn);
+  panel.appendChild(modeRow);
+
+  const canvasWrap = document.createElement('div');
+  canvasWrap.className = 'analyzer-canvas-wrap';
+  canvasWrap.style.height = '82px';
+
+  const canvas = document.createElement('canvas');
+  canvas.className = 'analyzer-canvas';
+  canvasWrap.appendChild(canvas);
+  panel.appendChild(canvasWrap);
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return panel;
+  const renderCtx = ctx;
+
+  type Mode = 'waveform' | 'spectrogram';
+  let mode: Mode = 'waveform';
+
+  let waveformValues: number[] = Array.from({ length: 256 }, () => 0);
+  let spectrogramValues: number[] = Array.from({ length: 96 }, () => 0);
+
+  let imageWidth = 0;
+  let imageHeight = 0;
+  let spectrogramImage: Uint8ClampedArray | null = null;
+
+  function setMode(nextMode: Mode) {
+    mode = nextMode;
+    waveformBtn.classList.toggle('active', mode === 'waveform');
+    spectrogramBtn.classList.toggle('active', mode === 'spectrogram');
+  }
+
+  waveformBtn.addEventListener('click', () => setMode('waveform'));
+  spectrogramBtn.addEventListener('click', () => setMode('spectrogram'));
+
+  function ensureCanvasSize() {
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const rect = canvasWrap.getBoundingClientRect();
+    const w = Math.max(2, Math.floor(rect.width * dpr));
+    const h = Math.max(2, Math.floor(rect.height * dpr));
+
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      imageWidth = w;
+      imageHeight = h;
+      spectrogramImage = new Uint8ClampedArray(imageWidth * imageHeight * 4);
+    }
+  }
+
+  function blendHex(a: string, b: string, t: number): [number, number, number] {
+    const parse = (hex: string) => {
+      const raw = hex.startsWith('#') ? hex.slice(1) : hex;
+      return [
+        Number.parseInt(raw.slice(0, 2), 16),
+        Number.parseInt(raw.slice(2, 4), 16),
+        Number.parseInt(raw.slice(4, 6), 16),
+      ] as const;
+    };
+    const [ar, ag, ab] = parse(a);
+    const [br, bg, bb] = parse(b);
+    return [
+      Math.round(ar + (br - ar) * t),
+      Math.round(ag + (bg - ag) * t),
+      Math.round(ab + (bb - ab) * t),
+    ];
+  }
+
+  function spectrumColor(value: number): [number, number, number] {
+    const v = Math.max(0, Math.min(1, value));
+    if (v < 0.4) {
+      return blendHex(C.offDark1, C.purple, v / 0.4);
+    }
+    if (v < 0.75) {
+      return blendHex(C.purple, C.orange, (v - 0.4) / 0.35);
+    }
+    return blendHex(C.orange, C.offWhite, (v - 0.75) / 0.25);
+  }
+
+  function pushSpectrogramColumn() {
+    ensureCanvasSize();
+    if (!spectrogramImage || imageWidth < 2 || imageHeight < 2) return;
+
+    for (let y = 0; y < imageHeight; y++) {
+      const rowStart = y * imageWidth * 4;
+      spectrogramImage.copyWithin(rowStart, rowStart + 4, rowStart + imageWidth * 4);
+
+      const normY = 1 - (y / Math.max(1, imageHeight - 1));
+      const binIndex = Math.min(
+        spectrogramValues.length - 1,
+        Math.max(0, Math.round(normY * (spectrogramValues.length - 1))),
+      );
+      const [r, g, b] = spectrumColor(spectrogramValues[binIndex] ?? 0);
+
+      const pixel = rowStart + (imageWidth - 1) * 4;
+      spectrogramImage[pixel + 0] = r;
+      spectrogramImage[pixel + 1] = g;
+      spectrogramImage[pixel + 2] = b;
+      spectrogramImage[pixel + 3] = 255;
+    }
+  }
+
+  function drawWaveform() {
+    const w = canvas.width;
+    const h = canvas.height;
+    if (w <= 2 || h <= 2) return;
+
+    renderCtx.clearRect(0, 0, w, h);
+
+    renderCtx.strokeStyle = C.white24;
+    renderCtx.lineWidth = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+    renderCtx.beginPath();
+    renderCtx.moveTo(0, h * 0.5);
+    renderCtx.lineTo(w, h * 0.5);
+    renderCtx.stroke();
+
+    renderCtx.strokeStyle = C.purple;
+    renderCtx.lineWidth = Math.max(1.2, (window.devicePixelRatio || 1) * 1.1);
+    renderCtx.beginPath();
+
+    const count = waveformValues.length;
+    for (let i = 0; i < count; i++) {
+      const x = (i / Math.max(1, count - 1)) * (w - 1);
+      const y = (0.5 - (waveformValues[i] ?? 0) * 0.45) * (h - 1);
+      if (i === 0) renderCtx.moveTo(x, y);
+      else renderCtx.lineTo(x, y);
+    }
+    renderCtx.stroke();
+  }
+
+  function drawSpectrogram() {
+    if (!spectrogramImage) return;
+    const image = renderCtx.createImageData(imageWidth, imageHeight);
+    image.data.set(spectrogramImage);
+    renderCtx.putImageData(image, 0, 0);
+  }
+
+  function render() {
+    ensureCanvasSize();
+    if (mode === 'waveform') {
+      drawWaveform();
+    } else {
+      drawSpectrogram();
+    }
+    requestAnimationFrame(render);
+  }
+
+  onWaveform((values) => {
+    waveformValues = values;
+  });
+
+  onSpectrogram((values) => {
+    spectrogramValues = values;
+    pushSpectrogramColumn();
+  });
+
+  render();
+  return panel;
+}
+
 // ---------------------------------------------------------------------------
 // Left column
 // ---------------------------------------------------------------------------
@@ -935,11 +1160,13 @@ leftCol.appendChild(envRow);
     buildKnob('lfo_rate', 40),
     buildKnob('lfo_depth', 40),
   
-    buildDropdown('lfo_shape', 60),
-    buildDropdown('lfo_dest', 60),
+    buildDropdown('lfo_shape', 40),
+    buildDropdown('lfo_dest', 40),
   ));
   envRow.appendChild(panel);
 }
+
+envRow.appendChild(makeAnalyzerPanel());
 
 // FX grid (below envelopes)
 const fxGrid = document.createElement('div');

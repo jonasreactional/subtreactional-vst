@@ -1,13 +1,16 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_dsp/juce_dsp.h>
+#include <array>
 #include "PluginProcessor.h"
 #include "JuceBridge.h"
 
 //==============================================================================
 class SubtreactionalAudioProcessorEditor
     : public juce::AudioProcessorEditor,
-      private juce::AudioProcessorValueTreeState::Listener
+    private juce::AudioProcessorValueTreeState::Listener,
+    private juce::Timer
 {
 public:
     explicit SubtreactionalAudioProcessorEditor (SubtreactionalAudioProcessor&);
@@ -22,6 +25,35 @@ private:
 
     // juce::AudioProcessorValueTreeState::Listener
     void parameterChanged (const juce::String& parameterID, float newValue) override;
+
+    // juce::Timer
+    void timerCallback() override;
+
+    void appendAnalysisSamples (const float* samples, int numSamples);
+    void buildWaveformFrame();
+    bool buildSpectrogramFrame();
+
+    static constexpr int kAnalysisReadSize = 2048;
+    static constexpr int kWaveformPoints = 256;
+    static constexpr int kSpectrogramBins = 96;
+    static constexpr int kFftOrder = 10;
+    static constexpr int kFftSize = 1 << kFftOrder;
+
+    juce::dsp::FFT fft { kFftOrder };
+    juce::dsp::WindowingFunction<float> fftWindow {
+        kFftSize,
+        juce::dsp::WindowingFunction<float>::hann,
+        true
+    };
+
+    std::array<float, kAnalysisReadSize> analysisReadBuffer {};
+    std::array<float, kFftSize * 8> analysisHistory {};
+    int historyWritePos = 0;
+    int historyCount = 0;
+
+    std::array<float, kFftSize * 2> fftData {};
+    std::array<float, kWaveformPoints> waveformFrame {};
+    std::array<float, kSpectrogramBins> spectrogramFrame {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SubtreactionalAudioProcessorEditor)
 };

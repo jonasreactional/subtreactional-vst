@@ -19,6 +19,23 @@ static juce::WebBrowserComponent::Options makeBrowserOptions()
     return opts;
 }
 
+static juce::String makeNumericArrayLiteral (const float* values, int numValues)
+{
+    juce::String s;
+    s.preallocateBytes (numValues * 10);
+    s << "[";
+
+    for (int i = 0; i < numValues; ++i)
+    {
+        if (i != 0)
+            s << ",";
+        s << juce::String (values[i], 6);
+    }
+
+    s << "]";
+    return s;
+}
+
 JuceBridge::JuceBridge (SubtreactionalAudioProcessor& p)
     : WebBrowserComponent (makeBrowserOptions()), processor (p)
 {
@@ -43,6 +60,24 @@ void JuceBridge::pushParam (const juce::String& id, float value)
     // juce_WebBrowserComponent_mac.mm WKWebViewImpl::goToURL lines ~539-545).
     goToURL ("javascript:window.__juce && window.__juce.onParam("
              + id.quoted() + "," + juce::String (value, 6) + ")");
+}
+
+void JuceBridge::pushWaveform (const float* points, int numPoints)
+{
+    if (points == nullptr || numPoints <= 0)
+        return;
+
+    goToURL ("javascript:window.__juce && window.__juce.onWaveform("
+             + makeNumericArrayLiteral (points, numPoints) + ")");
+}
+
+void JuceBridge::pushSpectrogram (const float* bins, int numBins)
+{
+    if (bins == nullptr || numBins <= 0)
+        return;
+
+    goToURL ("javascript:window.__juce && window.__juce.onSpectrogram("
+             + makeNumericArrayLiteral (bins, numBins) + ")");
 }
 
 void JuceBridge::pushAllParams()

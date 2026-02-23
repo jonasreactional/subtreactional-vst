@@ -20,6 +20,12 @@ public:
     /** Push a single parameter value to the web UI (must be called on the message thread). */
     void pushParam (const juce::String& id, float value);
 
+    /** Push waveform points to the web UI (must be called on the message thread). */
+    void pushWaveform (const float* points, int numPoints);
+
+    /** Push spectrogram magnitudes (0..1) to the web UI (must be called on the message thread). */
+    void pushSpectrogram (const float* bins, int numBins);
+
     /** Push all current APVTS values to the web UI. */
     void pushAllParams();
 

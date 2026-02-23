@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <array>
 
 extern "C" {
 #include "subtreactional/subtreactional.h"
@@ -63,6 +64,10 @@ public:
     static const ParamMap kParams[];
     static const int      kNumParams;
 
+    // Pops mono analyzer samples from the lock-free FIFO.
+    // Returns number of samples written to dest.
+    int popAnalyzerSamples (float* dest, int maxSamples);
+
 private:
     static constexpr size_t kMempoolSize = 4 * 1024 * 1024; // 4 MB
     char     mempool[kMempoolSize];
@@ -74,6 +79,12 @@ private:
 
     // Read all values from synth back into APVTS (used after loading a patch)
     void syncApvtsFromSynth();
+
+    void pushAnalyzerSamples (const juce::AudioBuffer<float>& buffer);
+
+    static constexpr int kAnalyzerFifoSize = 1 << 16;
+    juce::AbstractFifo analyzerFifo { kAnalyzerFifoSize };
+    std::array<float, kAnalyzerFifoSize> analyzerSampleBuffer {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SubtreactionalAudioProcessor)
 };
