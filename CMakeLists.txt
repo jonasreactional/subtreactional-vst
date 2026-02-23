@@ -74,6 +74,7 @@ target_link_libraries(SubtreactionalVST
         subtreactional
         juce::juce_audio_utils
         juce::juce_audio_plugin_client
+        juce::juce_dsp
         juce::juce_gui_extra
     PUBLIC
         juce::juce_recommended_config_flags
