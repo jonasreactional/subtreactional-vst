@@ -71,7 +71,7 @@ const PARAMS: ParamDef[] = [
   { id: 'pitch_bend_range',    label: 'Pitch Bend', min: 0, max: 24, defaultValue: 2, step: 1, type: 'slider' },
   { id: 'portamento_time',     label: 'Portamento', min: 0, max: 1000, defaultValue: 0, type: 'slider' },
   // Voice count
-  { id: 'num_voices', label: 'Voices', min: 0, max: 15, defaultValue: 7, type: 'combo', options: VOICE_COUNTS },
+  { id: 'num_voices', label: 'Voices', min: 1, max: 16, defaultValue: 8, step: 1, type: 'slider' },
   // LFO
   { id: 'lfo_rate',  label: 'Rate', min: 0.1, max: 20, defaultValue: 1, type: 'slider' },
   { id: 'lfo_depth', label: 'Depth', min: 0, max: 1, defaultValue: 0, type: 'slider' },
@@ -324,6 +324,11 @@ style.textContent = `
     display: block;
   }
 
+  .dropdown-panel.open-upward {
+    top: auto;
+    bottom: calc(100% + 2px);
+  }
+
   .dropdown-option {
     padding: 5px 8px;
     font-size: 11px;
@@ -338,25 +343,86 @@ style.textContent = `
   }
 
   /* FX panel layout */
-  .fx-panel {
+  .fx-rack {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    padding: 6px 8px;
     flex: 1;
     min-width: 0;
-    height: 100%;
-    padding: 6px 8px;
   }
 
-  .fx-row {
+  .fx-row-wrap {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+  }
+
+  .fx-side-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    justify-items: center;
+    gap: 8px 6px;
+    padding: 8px 6px;
+    min-width: 116px;
+    width: 25%;
+    height: 100%;
+    flex: 0 0 auto;
+  }
+
+  .fx-rack-grid {
+    display: flex;
+    gap: 8px;
+  }
+
+  .fx-rack-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .fx-slot {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex-shrink: 0;
+    min-height: 64px;
   }
 
-  .fx-type-wrap {
-    flex: 0 0 70px;
+  .fx-slot-label {
+    flex: 0 0 16px;
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    color: ${C.white48};
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  .fx-slot-main {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .fx-slot-params {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .fx-param-group {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
   }
 
   .master-panel {
@@ -707,12 +773,23 @@ function createDropdown(opts: DropdownOptions): DropdownControl {
   });
 
   function openPanel() {
+    // Detect overflow and determine if dropdown should open upward
+    const rect = btn.getBoundingClientRect();
+    const panelMaxHeight = 100; // matches .dropdown-panel max-height
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    
+    // If not enough space below but more space above, open upward
+    const shouldOpenUpward = spaceBelow < panelMaxHeight && spaceAbove > spaceBelow;
+    
     panel.classList.add('open');
+    panel.classList.toggle('open-upward', shouldOpenUpward);
     chevron.classList.add('open');
   }
 
   function closePanel() {
-    panel.classList.remove('open');
+    panel.classList.remove('open', 'open-upward');
     chevron.classList.remove('open');
   }
 
@@ -1157,10 +1234,108 @@ leftCol.appendChild(envRow);
 
 envRow.appendChild(makeAnalyzerPanel());
 
-// FX grid (below envelopes)
-const fxGrid = document.createElement('div');
-fxGrid.className = 'fx-grid';
-leftCol.appendChild(fxGrid);
+// FX rack (compact)
+{
+  const fxRowWrap = document.createElement('div');
+  fxRowWrap.className = 'fx-row-wrap';
+
+  const { panel } = makePanel('FX');
+  panel.classList.add('fx-rack');
+
+  const rackGrid = document.createElement('div');
+  rackGrid.className = 'fx-rack-grid';
+
+  const rackColA = document.createElement('div');
+  rackColA.className = 'fx-rack-col';
+
+  const rackColB = document.createElement('div');
+  rackColB.className = 'fx-rack-col';
+
+  panel.appendChild(rackGrid);
+  rackGrid.appendChild(rackColA);
+  rackGrid.appendChild(rackColB);
+
+  for (let i = 0; i < 4; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'fx-slot';
+
+    const slotLabel = document.createElement('div');
+    slotLabel.className = 'fx-slot-label';
+    slotLabel.textContent = String(i + 1);
+
+    const slotMain = document.createElement('div');
+    slotMain.className = 'fx-slot-main';
+
+    const typeDropdown = buildDropdown(`fx${i}_type`, 76);
+    const mixKnob = buildKnob(`fx${i}_mix`, 32);
+    mixKnob.style.display = 'none';
+
+    const paramsWrap = document.createElement('div');
+    paramsWrap.className = 'fx-slot-params';
+
+    const delayGroup = document.createElement('div');
+    delayGroup.className = 'fx-param-group';
+    delayGroup.appendChild(buildKnob(`fx${i}_delay_time`, 30));
+    delayGroup.appendChild(buildKnob(`fx${i}_delay_feedback`, 30));
+
+    const chorusGroup = document.createElement('div');
+    chorusGroup.className = 'fx-param-group';
+    chorusGroup.appendChild(buildKnob(`fx${i}_chorus_rate`, 30));
+    chorusGroup.appendChild(buildKnob(`fx${i}_chorus_depth`, 30));
+
+    const reverbGroup = document.createElement('div');
+    reverbGroup.className = 'fx-param-group';
+    reverbGroup.appendChild(buildKnob(`fx${i}_reverb_t60`, 30));
+
+    const distortionGroup = document.createElement('div');
+    distortionGroup.className = 'fx-param-group';
+    distortionGroup.appendChild(buildKnob(`fx${i}_distortion_drive`, 30));
+
+    paramsWrap.appendChild(delayGroup);
+    paramsWrap.appendChild(chorusGroup);
+    paramsWrap.appendChild(reverbGroup);
+    paramsWrap.appendChild(distortionGroup);
+
+    function updateFxVisibility(typeIndex: number) {
+      const isOff = typeIndex === 0;
+      mixKnob.style.display = isOff ? 'none' : '';
+      delayGroup.style.display = typeIndex === 1 ? 'flex' : 'none';
+      chorusGroup.style.display = typeIndex === 2 ? 'flex' : 'none';
+      reverbGroup.style.display = typeIndex === 3 ? 'flex' : 'none';
+      distortionGroup.style.display = typeIndex === 4 ? 'flex' : 'none';
+    }
+
+    updateFxVisibility(0);
+
+    onParam(`fx${i}_type`, (v) => {
+      const idx = Math.round(v * (FX_TYPES.length - 1));
+      updateFxVisibility(idx);
+    });
+
+    slotMain.appendChild(typeDropdown);
+    slotMain.appendChild(mixKnob);
+
+    slot.appendChild(slotLabel);
+    slot.appendChild(slotMain);
+    slot.appendChild(paramsWrap);
+
+    (i < 2 ? rackColA : rackColB).appendChild(slot);
+  }
+
+  fxRowWrap.appendChild(panel);
+
+  const fxSidePanel = document.createElement('div');
+  fxSidePanel.className = 'panel fx-side-panel';
+  fxSidePanel.appendChild(buildKnob('num_voices', 38));
+  fxSidePanel.appendChild(buildKnob('pitch_bend_range', 38));
+  const portamentoKnob = buildKnob('portamento_time', 38);
+  portamentoKnob.style.gridColumn = '1 / -1';
+  portamentoKnob.style.justifySelf = 'center';
+  fxSidePanel.appendChild(portamentoKnob);
+  fxRowWrap.appendChild(fxSidePanel);
+
+  leftCol.appendChild(fxRowWrap);
+}
 
 // ---------------------------------------------------------------------------
 // Right column: Master
@@ -1168,68 +1343,6 @@ leftCol.appendChild(fxGrid);
 const rightCol = document.createElement('div');
 rightCol.className = 'right-col';
 mainLayout.appendChild(rightCol);
-
-for (let i = 0; i < 4; i++) {
-  const { panel } = makePanel(`FX ${i}`);
-  panel.className = 'panel fx-panel';
-
-  // FX type dropdown
-  const typeRow = document.createElement('div');
-  typeRow.className = 'fx-row';
-  typeRow.appendChild(buildKnob(`fx${i}_mix`, 36));
-  typeRow.appendChild(buildDropdown(`fx${i}_type`, 80));
-  panel.appendChild(typeRow);
-
-  // Mix knob (shown for all non-Off types)
-  const mixRow = document.createElement('div');
-  mixRow.className = 'knobs-row';
-  // mixRow.appendChild(buildKnob(`fx${i}_mix`, 36));
-  panel.appendChild(mixRow);
-
-  // Delay params
-  const delayRow = document.createElement('div');
-  delayRow.className = 'knobs-row';
-  delayRow.appendChild(buildKnob(`fx${i}_delay_time`, 34));
-  delayRow.appendChild(buildKnob(`fx${i}_delay_feedback`, 34));
-  panel.appendChild(delayRow);
-
-  // Chorus params
-  const chorusRow = document.createElement('div');
-  chorusRow.className = 'knobs-row';
-  chorusRow.appendChild(buildKnob(`fx${i}_chorus_rate`, 34));
-  chorusRow.appendChild(buildKnob(`fx${i}_chorus_depth`, 34));
-  panel.appendChild(chorusRow);
-
-  // Reverb params
-  const reverbRow = document.createElement('div');
-  reverbRow.className = 'knobs-row';
-  reverbRow.appendChild(buildKnob(`fx${i}_reverb_t60`, 34));
-  panel.appendChild(reverbRow);
-
-  // Distortion params
-  const distortionRow = document.createElement('div');
-  distortionRow.className = 'knobs-row';
-  distortionRow.appendChild(buildKnob(`fx${i}_distortion_drive`, 34));
-  panel.appendChild(distortionRow);
-
-  // Show/hide rows based on FX type: 0=Off, 1=Delay, 2=Chorus, 3=Reverb, 4=Distortion
-  function updateFxVisibility(typeIndex: number) {
-    mixRow.style.display       = typeIndex === 0 ? 'none' : 'flex';
-    delayRow.style.display     = typeIndex === 1 ? 'flex' : 'none';
-    chorusRow.style.display    = typeIndex === 2 ? 'flex' : 'none';
-    reverbRow.style.display    = typeIndex === 3 ? 'flex' : 'none';
-    distortionRow.style.display = typeIndex === 4 ? 'flex' : 'none';
-  }
-
-  updateFxVisibility(0); // default: Off
-
-  onParam(`fx${i}_type`, (v) => {
-    const idx = Math.round(v * (FX_TYPES.length - 1));
-    updateFxVisibility(idx);
-  });
-
-  fxGrid.appendChild(panel);
-}
 
 // Master
 {
@@ -1247,29 +1360,6 @@ for (let i = 0; i < 4; i++) {
   masterWrap.style.gap = '6px';
 
   masterWrap.appendChild(buildKnob('master_volume', 52));
-
-  // Voice count dropdown
-  const voicesWrap = document.createElement('div');
-  voicesWrap.style.display = 'flex';
-  voicesWrap.style.flexDirection = 'column';
-  voicesWrap.style.alignItems = 'center';
-  voicesWrap.style.gap = '2px';
-  const voicesLabel = document.createElement('div');
-  voicesLabel.textContent = 'Voices';
-  voicesLabel.style.fontSize = '9px';
-  voicesLabel.style.color = C.white48;
-  voicesLabel.style.textTransform = 'uppercase';
-  voicesLabel.style.letterSpacing = '0.5px';
-  voicesLabel.style.fontFamily = "'Inter', system-ui, sans-serif";
-  voicesWrap.appendChild(voicesLabel);
-  voicesWrap.appendChild(buildDropdown('num_voices', 60));
-  masterWrap.appendChild(voicesWrap);
-
-  // Pitch Bend Range knob
-  masterWrap.appendChild(buildKnob('pitch_bend_range', 40));
-
-  // Portamento Time knob
-  masterWrap.appendChild(buildKnob('portamento_time', 40));
 
   masterPanel.appendChild(masterWrap);
   rightCol.appendChild(masterPanel);
