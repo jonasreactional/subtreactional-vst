@@ -3,6 +3,7 @@
 
 #include <cstring>
 #include <cstdlib>
+#include <algorithm>
 
 extern "C" {
 #include "subtreactional/subtreactional.h"
@@ -124,11 +125,28 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "pan_spread",          "pan_spread" },
     // Voice count
     { "num_voices",          "num_voices" },
-    // LFO
-    { "lfo_rate",            "lfo.rate" },
-    { "lfo_depth",           "lfo.depth" },
-    { "lfo_shape",           "lfo.shape" },
-    { "lfo_dest",            "lfo.dest" },
+    // LFO 0..3
+    { "lfo0_rate",           "lfo0.rate" },
+    { "lfo0_depth",          "lfo0.depth" },
+    { "lfo0_shape",          "lfo0.shape" },
+    { "lfo1_rate",           "lfo1.rate" },
+    { "lfo1_depth",          "lfo1.depth" },
+    { "lfo1_shape",          "lfo1.shape" },
+    { "lfo2_rate",           "lfo2.rate" },
+    { "lfo2_depth",          "lfo2.depth" },
+    { "lfo2_shape",          "lfo2.shape" },
+    { "lfo3_rate",           "lfo3.rate" },
+    { "lfo3_depth",          "lfo3.depth" },
+    { "lfo3_shape",          "lfo3.shape" },
+    // Macros 0..3
+    { "macro0_value",        "macro0.value" },
+    { "macro0_cc",           "macro0.cc" },
+    { "macro1_value",        "macro1.value" },
+    { "macro1_cc",           "macro1.cc" },
+    { "macro2_value",        "macro2.value" },
+    { "macro2_cc",           "macro2.cc" },
+    { "macro3_value",        "macro3.value" },
+    { "macro3_cc",           "macro3.cc" },
 };
 
 const int SubtreactionalAudioProcessor::kNumParams =
@@ -245,13 +263,23 @@ SubtreactionalAudioProcessor::createParameterLayout()
         voiceChoices.add(juce::String(i));
     addCombo("num_voices", voiceChoices, 7); // index 7 = 8 voices
 
-    // LFO (sine, tri, saw, square; none, pitch, cutoff, amp, pwm)
+    // LFOs 0..3 (sine, tri, saw, square)
     juce::StringArray lfoShapes { "Sine", "Tri", "Saw", "Square" };
-    juce::StringArray lfoDests { "Off", "Pitch", "Cutoff", "Amp", "PWM" };
-    addSlider("lfo_rate",  0.1f, 20.0f, 1.0f,  0.1f);
-    addSlider("lfo_depth", 0.0f, 1.0f,  0.0f,  0.001f);
-    addCombo("lfo_shape",  lfoShapes, 0); // default: Sine
-    addCombo("lfo_dest",   lfoDests,  0); // default: Off
+    for (int l = 0; l < 4; ++l)
+    {
+        juce::String lp = "lfo" + juce::String(l) + "_";
+        addSlider((lp + "rate").toRawUTF8(),  0.1f, 20.0f, 1.0f, 0.1f);
+        addSlider((lp + "depth").toRawUTF8(), 0.0f, 1.0f,  0.0f, 0.001f);
+        addCombo((lp  + "shape").toRawUTF8(), lfoShapes, 0);
+    }
+
+    // Macros 0..3
+    for (int m = 0; m < 4; ++m)
+    {
+        juce::String mp = "macro" + juce::String(m) + "_";
+        addSlider((mp + "value").toRawUTF8(), 0.0f, 1.0f,   0.0f, 0.001f);
+        addSlider((mp + "cc").toRawUTF8(),   -1.0f, 127.0f, -1.0f, 1.0f);
+    }
 
     return { params.begin(), params.end() };
 }
@@ -264,6 +292,9 @@ SubtreactionalAudioProcessor::SubtreactionalAudioProcessor()
 {
     std::memset (mempool, 0, sizeof (mempool));
     std::memset (&synth,  0, sizeof (synth));
+
+    for (auto& a : pendingMacroCC_)
+        a.store (-1.0f);
 }
 
 SubtreactionalAudioProcessor::~SubtreactionalAudioProcessor()
@@ -339,6 +370,21 @@ void SubtreactionalAudioProcessor::processBlock (juce::AudioBuffer<float>& buffe
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
 
+    // Apply any macro values driven by MIDI CC since the last block.
+    // This must happen before the APVTS sync so the CC value is not overwritten.
+    for (int m = 0; m < ST_MAX_MACROS; ++m)
+    {
+        const float ccVal = pendingMacroCC_[m].exchange (-1.0f);
+        if (ccVal >= 0.0f)
+        {
+            // Write into the APVTS raw atomic so the sync below picks it up.
+            // getRawParameterValue returns the denormalized value; for macro_value
+            // (range 0..1) the denormalized value equals the normalised value.
+            if (auto* raw = apvts.getRawParameterValue ("macro" + juce::String (m) + "_value"))
+                raw->store (ccVal);
+        }
+    }
+
     // Sync all APVTS parameters to the synth before rendering.
     // getRawParameterValue returns std::atomic<float>*, safe from audio thread.
     for (int i = 0; i < kNumParams; ++i)
@@ -366,7 +412,19 @@ void SubtreactionalAudioProcessor::processBlock (juce::AudioBuffer<float>& buffe
         else if (msg.isNoteOff())
             st_synth_note_off (&synth, msg.getNoteNumber(), 0);
         else if (msg.isController())
-            st_synth_midi_cc  (&synth, msg.getControllerNumber(), msg.getControllerValue());
+        {
+            const int cc  = msg.getControllerNumber();
+            const int val = msg.getControllerValue();
+            st_synth_midi_cc (&synth, cc, val);
+
+            // Store CC-driven macro values so the top of the next block
+            // writes them into APVTS before the APVTS→synth sync runs.
+            for (int m = 0; m < ST_MAX_MACROS; ++m)
+            {
+                if (synth.patch.macros[m].cc == cc)
+                    pendingMacroCC_[m].store (val / 127.0f);
+            }
+        }
     }
 
     // Render audio — st_synth_render add-mixes into (already-cleared) buffers
@@ -409,7 +467,118 @@ void SubtreactionalAudioProcessor::setStateInformation (const void* data, int si
 
     const char* json = static_cast<const char*> (mb.getData());
     if (st_patch_load_string (&synth, json) == 0)
-        syncApvtsFromSynth();  // synth → APVTS so knobs reflect the loaded patch
+    {
+        syncApvtsFromSynth();   // synth → APVTS so knobs reflect the loaded patch
+        rebuildModAssignmentsFromPatch();
+    }
+}
+
+//==============================================================================
+void SubtreactionalAudioProcessor::rebuildModAssignmentsFromPatch()
+{
+    modAssignments_.clear();
+    if (! synthInitialised) return;
+
+    // Rebuild from LFOs
+    for (int l = 0; l < ST_MAX_LFOS; ++l)
+    {
+        const st_lfo_data& lfo = synth.patch.lfos[l];
+        for (int t = 0; t < lfo.num_targets; ++t)
+        {
+            // Convert st_mod_param enum back to string name
+            static const char* paramNames[] = {
+                "pitch",
+                "osc1.level", "osc1.detune", "osc1.pulse_width", "osc1.pan",
+                "osc2.level", "osc2.detune", "osc2.pulse_width", "osc2.pan",
+                "sub.level", "ring_mod",
+                "filter.cutoff", "filter.resonance",
+                "amp", "pan_spread", "master_volume",
+                "fx0.mix", "fx1.mix", "fx2.mix", "fx3.mix"
+            };
+            int paramIdx = static_cast<int> (lfo.targets[t].param);
+            if (paramIdx < 0 || paramIdx >= ST_MOD_PARAM_COUNT) continue;
+            modAssignments_.push_back ({ 0, l,
+                                         juce::String (paramNames[paramIdx]),
+                                         lfo.targets[t].depth });
+        }
+    }
+
+    // Rebuild from Macros
+    for (int m = 0; m < ST_MAX_MACROS; ++m)
+    {
+        const st_macro_data& mac = synth.patch.macros[m];
+        for (int t = 0; t < mac.num_targets; ++t)
+        {
+            static const char* paramNames[] = {
+                "pitch",
+                "osc1.level", "osc1.detune", "osc1.pulse_width", "osc1.pan",
+                "osc2.level", "osc2.detune", "osc2.pulse_width", "osc2.pan",
+                "sub.level", "ring_mod",
+                "filter.cutoff", "filter.resonance",
+                "amp", "pan_spread", "master_volume",
+                "fx0.mix", "fx1.mix", "fx2.mix", "fx3.mix"
+            };
+            int paramIdx = static_cast<int> (mac.targets[t].param);
+            if (paramIdx < 0 || paramIdx >= ST_MOD_PARAM_COUNT) continue;
+            modAssignments_.push_back ({ 1, m,
+                                         juce::String (paramNames[paramIdx]),
+                                         mac.targets[t].depth });
+        }
+    }
+}
+
+//==============================================================================
+void SubtreactionalAudioProcessor::modAdd (int sourceType, int sourceIdx,
+                                            const juce::String& paramName, float depth)
+{
+    if (! synthInitialised) return;
+
+    st_synth_mod_add (&synth, sourceType, sourceIdx,
+                      paramName.toRawUTF8(), depth);
+
+    // Update local mirror
+    auto it = std::find_if (modAssignments_.begin(), modAssignments_.end(),
+        [&](const ModAssignment& a) {
+            return a.sourceType == sourceType && a.sourceIdx == sourceIdx
+                   && a.paramName == paramName;
+        });
+    if (it != modAssignments_.end())
+        it->depth = depth;
+    else
+        modAssignments_.push_back ({ sourceType, sourceIdx, paramName, depth });
+}
+
+void SubtreactionalAudioProcessor::modRemove (int sourceType, int sourceIdx,
+                                               const juce::String& paramName)
+{
+    if (! synthInitialised) return;
+
+    st_synth_mod_remove (&synth, sourceType, sourceIdx, paramName.toRawUTF8());
+
+    modAssignments_.erase (
+        std::remove_if (modAssignments_.begin(), modAssignments_.end(),
+            [&](const ModAssignment& a) {
+                return a.sourceType == sourceType && a.sourceIdx == sourceIdx
+                       && a.paramName == paramName;
+            }),
+        modAssignments_.end());
+}
+
+void SubtreactionalAudioProcessor::modSetDepth (int sourceType, int sourceIdx,
+                                                 const juce::String& paramName, float depth)
+{
+    if (! synthInitialised) return;
+
+    st_synth_mod_set_depth (&synth, sourceType, sourceIdx,
+                            paramName.toRawUTF8(), depth);
+
+    auto it = std::find_if (modAssignments_.begin(), modAssignments_.end(),
+        [&](const ModAssignment& a) {
+            return a.sourceType == sourceType && a.sourceIdx == sourceIdx
+                   && a.paramName == paramName;
+        });
+    if (it != modAssignments_.end())
+        it->depth = depth;
 }
 
 //==============================================================================

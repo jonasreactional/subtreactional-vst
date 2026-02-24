@@ -29,6 +29,9 @@ public:
     /** Push all current APVTS values to the web UI. */
     void pushAllParams();
 
+    /** Push all current modulation assignments to the web UI. */
+    void pushModAssignments();
+
     //==========================================================================
     // WebBrowserComponent overrides
     bool pageAboutToLoad  (const juce::String& newURL) override;

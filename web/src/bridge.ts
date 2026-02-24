@@ -12,19 +12,29 @@ declare global {
   }
 }
 
+export interface ModAssignmentInfo {
+  type: 'lfo' | 'macro';
+  idx: number;
+  param: string;
+  depth: number;
+}
+
 interface JuceBridgeGlobal {
   onParam(id: string, value: number): void;
   onWaveform(values: number[]): void;
   onSpectrogram(values: number[]): void;
+  onModAssignments(assignments: ModAssignmentInfo[]): void;
 }
 
 type Listener = (value: number) => void;
 type AnalyzerListener = (values: number[]) => void;
+type ModAssignmentsListener = (assignments: ModAssignmentInfo[]) => void;
 
 const listeners = new Map<string, Set<Listener>>();
 const lastParamValues = new Map<string, number>();
 const waveformListeners = new Set<AnalyzerListener>();
 const spectrogramListeners = new Set<AnalyzerListener>();
+const modAssignmentsListeners = new Set<ModAssignmentsListener>();
 
 // Install the global that C++ will call
 window.__juce = {
@@ -37,6 +47,9 @@ window.__juce = {
   },
   onSpectrogram(values: number[]) {
     spectrogramListeners.forEach((fn) => fn(values));
+  },
+  onModAssignments(assignments: ModAssignmentInfo[]) {
+    modAssignmentsListeners.forEach((fn) => fn(assignments));
   },
 };
 
@@ -71,4 +84,25 @@ export function onWaveform(fn: AnalyzerListener): () => void {
 export function onSpectrogram(fn: AnalyzerListener): () => void {
   spectrogramListeners.add(fn);
   return () => spectrogramListeners.delete(fn);
+}
+
+/** Subscribe to full mod-assignment state pushed from C++ on page load. */
+export function onModAssignments(fn: ModAssignmentsListener): () => void {
+  modAssignmentsListeners.add(fn);
+  return () => modAssignmentsListeners.delete(fn);
+}
+
+/** Send a modulation assignment to C++ */
+export function sendModAdd(type: 'lfo' | 'macro', idx: number, paramName: string, depth: number): void {
+  window.location.href = `juce://mod_add?src=${type}&idx=${idx}&param=${encodeURIComponent(paramName)}&depth=${depth}`;
+}
+
+/** Remove a modulation assignment */
+export function sendModRemove(type: 'lfo' | 'macro', idx: number, paramName: string): void {
+  window.location.href = `juce://mod_remove?src=${type}&idx=${idx}&param=${encodeURIComponent(paramName)}`;
+}
+
+/** Update depth of an existing modulation assignment */
+export function sendModSetDepth(type: 'lfo' | 'macro', idx: number, paramName: string, depth: number): void {
+  window.location.href = `juce://mod_depth?src=${type}&idx=${idx}&param=${encodeURIComponent(paramName)}&depth=${depth}`;
 }

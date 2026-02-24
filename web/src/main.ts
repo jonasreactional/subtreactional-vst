@@ -1,4 +1,4 @@
-import { setParam, onParam, onWaveform, onSpectrogram, notifyHostReady } from './bridge';
+import { setParam, onParam, onWaveform, onSpectrogram, notifyHostReady, sendModAdd, sendModRemove, sendModSetDepth, onModAssignments } from './bridge';
 
 // ---------------------------------------------------------------------------
 // Parameter definitions — mirrors PluginProcessor.cpp kParams
@@ -20,7 +20,6 @@ const FILTER_TYPES = ['Off', 'LP', 'HP', 'BP'];
 const FX_TYPES = ['Off', 'Delay', 'Chorus', 'Flanger', 'Phaser', 'VHS', 'Reverb', 'Distortion'];
 const PLAY_MODES = ['Poly', 'Mono', 'Legato'];
 const LFO_SHAPES = ['Sine', 'Tri', 'Saw', 'Square'];
-const LFO_DESTS = ['Off', 'Pitch', 'Cutoff', 'Amp', 'PWM'];
 const VOICE_COUNTS = Array.from({ length: 16 }, (_, i) => String(i + 1)); // '1' to '16'
 
 const PARAMS: ParamDef[] = [
@@ -92,17 +91,46 @@ const PARAMS: ParamDef[] = [
     { id: `lfo${i}_rate`,  label: `LFO${i+1} Rate`, min: 0.1, max: 20, defaultValue: 1, type: 'slider' as const },
     { id: `lfo${i}_depth`, label: 'Depth', min: 0, max: 1, defaultValue: 0, type: 'slider' as const },
     { id: `lfo${i}_shape`, label: 'Shape', min: 0, max: 3, defaultValue: 0, type: 'combo' as const, options: LFO_SHAPES },
-    { id: `lfo${i}_dest`,  label: 'Dest', min: 0, max: 4, defaultValue: 0, type: 'combo' as const, options: LFO_DESTS },
   ]),
   // Macros 1-4 (with CC assignments)
   ...([0, 1, 2, 3] as const).flatMap((i) => {
     const ccDefaults = [70, 71, 74, 75]; // Sound controller CCs
     return [
-      { id: `macro${i}`, label: `Macro ${i+1}`, min: 0, max: 1, defaultValue: 0, type: 'slider' as const },
-      { id: `macro${i}_cc`, label: `Macro ${i+1} CC`, min: 0, max: 127, defaultValue: ccDefaults[i], type: 'slider' as const },
+      { id: `macro${i}_value`, label: `Macro ${i+1}`, min: 0, max: 1, defaultValue: 0, type: 'slider' as const },
+      { id: `macro${i}_cc`, label: `Macro ${i+1} CC`, min: -1, max: 127, defaultValue: -1, type: 'slider' as const },
     ];
   }),
 ];
+
+// Modulation source colors (LFO 1-4 and Macro 1-4)
+const LFO_COLORS = ['#825CED', '#F38E30', '#2DD4BF', '#86EFAC'];
+const MACRO_COLORS = ['#F04E4E', '#4EF0A3', '#F0C24E', '#4E90F0'];
+
+// Maps UI param IDs to C modulation param names (dot notation for st_synth_mod_add)
+const MOD_PARAM_NAMES: Record<string, string> = {
+  'osc1_level':       'osc1.level',
+  'osc1_detune':      'osc1.detune',
+  'osc1_pulse_width': 'osc1.pulse_width',
+  'osc1_pan':         'osc1.pan',
+  'osc2_level':       'osc2.level',
+  'osc2_detune':      'osc2.detune',
+  'osc2_pulse_width': 'osc2.pulse_width',
+  'osc2_pan':         'osc2.pan',
+  'sub_level':        'sub.level',
+  'ring_mod':         'ring_mod',
+  'filter_cutoff':    'filter.cutoff',
+  'filter_resonance': 'filter.resonance',
+  'pan_spread':       'pan_spread',
+  'master_volume':    'master.volume',
+  'fx0_mix':          'fx0.mix',
+  'fx1_mix':          'fx1.mix',
+  'fx2_mix':          'fx2.mix',
+  'fx3_mix':          'fx3.mix',
+};
+
+// Reverse lookup: C mod param name → UI param ID
+const MOD_PARAM_ID_FROM_NAME: Record<string, string> =
+  Object.fromEntries(Object.entries(MOD_PARAM_NAMES).map(([id, name]) => [name, id]));
 
 // ---------------------------------------------------------------------------
 // Design tokens — ported from ge_core-webapp/src/styling.js
@@ -552,6 +580,95 @@ style.textContent = `
     width: 100%;
     height: 100%;
   }
+
+  /* ─── Waveform selector ─────────────────────────────────────────── */
+  .waveform-selector {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+  }
+
+  .wave-btn {
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    opacity: 0.4;
+    transition: opacity 0.1s, border-color 0.1s;
+  }
+
+  .wave-btn:hover {
+    opacity: 0.7;
+  }
+
+  .wave-btn.active {
+    opacity: 1;
+    border-color: var(--lfo-color, #825CED);
+  }
+
+  /* ─── LFO drag handle ───────────────────────────────────────────── */
+  .lfo-drag-handle {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    cursor: grab;
+    flex-shrink: 0;
+    transition: transform 0.1s;
+    box-shadow: 0 0 6px var(--lfo-color, #825CED);
+  }
+
+  .lfo-drag-handle:hover {
+    transform: scale(1.2);
+  }
+
+  .lfo-drag-handle:active {
+    cursor: grabbing;
+  }
+
+  /* ─── Macro drag handle ─────────────────────────────────────────── */
+  .macro-drag-handle {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    cursor: grab;
+    flex-shrink: 0;
+    transition: transform 0.1s;
+  }
+
+  .macro-drag-handle:hover {
+    transform: scale(1.2);
+  }
+
+  /* ─── Modulation depth mini-knob ────────────────────────────────── */
+  .mod-depth-knob {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    cursor: ns-resize;
+    z-index: 10;
+    transition: transform 0.1s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  }
+
+  .mod-depth-knob:hover {
+    transform: scale(1.2);
+  }
+
+  /* ─── Knob container drop zone ──────────────────────────────────── */
+  .knob-container.drop-target-active {
+    outline: 2px solid var(--drop-color, #825CED);
+    outline-offset: 2px;
+    border-radius: 50%;
+  }
 `;
 document.head.appendChild(style);
 
@@ -923,6 +1040,231 @@ app.appendChild(mainLayout);
 
 const paramMap = new Map(PARAMS.map((p) => [p.id, p]));
 
+// ---------------------------------------------------------------------------
+// Modulation drag-and-drop infrastructure
+// ---------------------------------------------------------------------------
+
+interface ActiveDrag {
+  type: 'lfo' | 'macro';
+  idx: number;
+  color: string;
+}
+
+interface ModDepthEntry {
+  type: 'lfo' | 'macro';
+  idx: number;
+  color: string;
+  depth: number;
+  el: HTMLElement;
+  updateArc: (depth: number) => void;
+}
+
+let activeDrag: ActiveDrag | null = null;
+
+// paramId -> list of active mod depth mini-knobs
+const modDepthMap = new Map<string, ModDepthEntry[]>();
+
+function addModDepthKnob(containerEl: HTMLElement, paramId: string, entry: ModDepthEntry) {
+  // Ensure container is relative
+  if (getComputedStyle(containerEl).position === 'static') {
+    containerEl.style.position = 'relative';
+  }
+
+  const existing = modDepthMap.get(paramId) ?? [];
+
+  // Check if same source already assigned — update depth instead
+  const prev = existing.find(e => e.type === entry.type && e.idx === entry.idx);
+  if (prev) {
+    prev.depth = entry.depth;
+    updateDepthKnobVisual(prev);
+    return;
+  }
+
+  existing.push(entry);
+  modDepthMap.set(paramId, existing);
+
+  const mini = document.createElement('div');
+  mini.className = 'mod-depth-knob';
+  // Offset each mini-knob horizontally so they don't stack
+  const offset = (existing.length - 1) * 16;
+  mini.style.right = `${-4 + offset}px`;
+
+  // SVG pie-slice arc
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const miniSvg = document.createElementNS(svgNS, 'svg');
+  miniSvg.setAttribute('width', '14');
+  miniSvg.setAttribute('height', '14');
+  miniSvg.setAttribute('viewBox', '0 0 14 14');
+  miniSvg.style.display = 'block';
+
+  const bgCircle = document.createElementNS(svgNS, 'circle');
+  bgCircle.setAttribute('cx', '7');
+  bgCircle.setAttribute('cy', '7');
+  bgCircle.setAttribute('r', '6');
+  bgCircle.setAttribute('fill', '#1A1D22');
+  bgCircle.setAttribute('stroke', 'rgba(0,0,0,0.5)');
+  bgCircle.setAttribute('stroke-width', '0.5');
+  miniSvg.appendChild(bgCircle);
+
+  const arcSlice = document.createElementNS(svgNS, 'path');
+  arcSlice.setAttribute('fill', entry.color);
+  miniSvg.appendChild(arcSlice);
+
+  // Thin ring border
+  const ringCircle = document.createElementNS(svgNS, 'circle');
+  ringCircle.setAttribute('cx', '7');
+  ringCircle.setAttribute('cy', '7');
+  ringCircle.setAttribute('r', '6');
+  ringCircle.setAttribute('fill', 'none');
+  ringCircle.setAttribute('stroke', entry.color);
+  ringCircle.setAttribute('stroke-width', '0.75');
+  ringCircle.setAttribute('opacity', '0.5');
+  miniSvg.appendChild(ringCircle);
+
+  mini.appendChild(miniSvg);
+
+  function updateArc(depth: number) {
+    const absD = Math.abs(depth);
+    mini.title = `${entry.type.toUpperCase()} ${entry.idx + 1} depth: ${depth >= 0 ? '+' : ''}${depth.toFixed(2)}\nDrag to adjust · Right-click to remove`;
+    if (absD < 0.01) {
+      arcSlice.setAttribute('d', '');
+      arcSlice.setAttribute('opacity', '1');
+      return;
+    }
+    const cx = 7, cy = 7, r = 5.5;
+    // Start at 12 o'clock (−π/2). Positive fills clockwise, negative counter-clockwise.
+    const startAngle = -Math.PI / 2;
+    const sweep = absD * Math.PI; // max ±180°
+    const endAngle = depth > 0 ? startAngle + sweep : startAngle - sweep;
+    const sx = cx + r * Math.cos(startAngle);
+    const sy = cy + r * Math.sin(startAngle);
+    const ex = cx + r * Math.cos(endAngle);
+    const ey = cy + r * Math.sin(endAngle);
+    const largeArc = sweep > Math.PI ? 1 : 0;
+    const sweepFlag = depth > 0 ? 1 : 0;
+    arcSlice.setAttribute('d',
+      `M ${cx} ${cy} L ${sx.toFixed(2)} ${sy.toFixed(2)} A ${r} ${r} 0 ${largeArc} ${sweepFlag} ${ex.toFixed(2)} ${ey.toFixed(2)} Z`
+    );
+    // Negative depth: slightly desaturated via opacity
+    arcSlice.setAttribute('opacity', depth >= 0 ? '1' : '0.65');
+  }
+
+  entry.el = mini;
+  entry.updateArc = updateArc;
+  updateDepthKnobVisual(entry);
+
+  // Depth drag (vertical)
+  let dragY = 0;
+  let dragDepth = entry.depth;
+
+  function onDepthMove(e: MouseEvent) {
+    const dy = dragY - e.clientY;
+    const newDepth = Math.max(-1, Math.min(1, dragDepth + dy / 100));
+    entry.depth = newDepth;
+    updateDepthKnobVisual(entry);
+    sendModSetDepth(entry.type, entry.idx, MOD_PARAM_NAMES[paramId] ?? paramId, newDepth);
+  }
+
+  function onDepthUp() {
+    window.removeEventListener('mousemove', onDepthMove);
+    window.removeEventListener('mouseup', onDepthUp);
+  }
+
+  mini.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragY = e.clientY;
+    dragDepth = entry.depth;
+    window.addEventListener('mousemove', onDepthMove);
+    window.addEventListener('mouseup', onDepthUp);
+  });
+
+  mini.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    removeModDepthKnob(containerEl, paramId, entry);
+  });
+
+  containerEl.appendChild(mini);
+}
+
+function updateDepthKnobVisual(entry: ModDepthEntry) {
+  if (!entry.el || !entry.updateArc) return;
+  entry.updateArc(entry.depth);
+}
+
+function removeModDepthKnob(containerEl: HTMLElement, paramId: string, entry: ModDepthEntry) {
+  const arr = modDepthMap.get(paramId);
+  if (!arr) return;
+  const idx = arr.indexOf(entry);
+  if (idx !== -1) arr.splice(idx, 1);
+  if (entry.el) containerEl.removeChild(entry.el);
+  sendModRemove(entry.type, entry.idx, MOD_PARAM_NAMES[paramId] ?? paramId);
+}
+
+// Restore mod assignment visuals pushed from C++ on page load
+onModAssignments((assignments) => {
+  // Clear any visuals that were previously rendered (e.g. double-push)
+  modDepthMap.forEach((entries, paramId) => {
+    const containerEl = document.querySelector(`[data-param-id="${paramId}"]`) as HTMLElement | null;
+    if (containerEl) entries.forEach((e) => { if (e.el) e.el.remove(); });
+  });
+  modDepthMap.clear();
+
+  for (const a of assignments) {
+    const paramId = MOD_PARAM_ID_FROM_NAME[a.param];
+    if (!paramId) continue;
+    const containerEl = document.querySelector(`[data-param-id="${paramId}"]`) as HTMLElement | null;
+    if (!containerEl) continue;
+    const color = a.type === 'lfo' ? LFO_COLORS[a.idx] : MACRO_COLORS[a.idx];
+    const entry: ModDepthEntry = {
+      type: a.type,
+      idx: a.idx,
+      color,
+      depth: a.depth,
+      el: null as unknown as HTMLElement,
+      updateArc: () => {},
+    };
+    addModDepthKnob(containerEl, paramId, entry);
+  }
+});
+
+function setupKnobDropZone(containerEl: HTMLElement, paramId: string) {
+  // Only modulatable params
+  if (!MOD_PARAM_NAMES[paramId]) return;
+
+  containerEl.setAttribute('data-param-id', paramId);
+
+  containerEl.addEventListener('dragover', (e) => {
+    if (!activeDrag) return;
+    e.preventDefault();
+    containerEl.style.setProperty('--drop-color', activeDrag.color);
+    containerEl.classList.add('drop-target-active');
+  });
+
+  containerEl.addEventListener('dragleave', () => {
+    containerEl.classList.remove('drop-target-active');
+  });
+
+  containerEl.addEventListener('drop', (e) => {
+    e.preventDefault();
+    containerEl.classList.remove('drop-target-active');
+    if (!activeDrag) return;
+    const modParamName = MOD_PARAM_NAMES[paramId];
+    if (!modParamName) return;
+    const entry: ModDepthEntry = {
+      type: activeDrag.type,
+      idx: activeDrag.idx,
+      color: activeDrag.color,
+      depth: 1.0,
+      el: null as unknown as HTMLElement,
+      updateArc: () => {},
+    };
+    addModDepthKnob(containerEl, paramId, entry);
+    sendModAdd(entry.type, entry.idx, modParamName, entry.depth);
+  });
+}
+
 // Helper: create a knob for a slider param + wire it
 function buildKnob(id: string, size: number): HTMLElement {
   const def = paramMap.get(id)!;
@@ -975,6 +1317,12 @@ function buildKnob(id: string, size: number): HTMLElement {
     knob.setValue(v);
   });
 
+  // Set up modulation drop zone if this is a modulatable parameter
+  const dropContainer = knob.el.querySelector('.knob-container') as HTMLElement;
+  if (dropContainer && MOD_PARAM_NAMES[id]) {
+    setupKnobDropZone(dropContainer, id);
+  }
+
   return knob.el;
 }
 
@@ -997,10 +1345,19 @@ function buildDropdown(id: string, width?: number): HTMLElement {
   return dd.el;
 }
 
-// Helper: create a CC number input for a macro
+/// Helper: create a CC number input for a macro
 function buildCCInput(id: string): HTMLElement {
   const def = paramMap.get(id)!;
-  const ccValue = Math.round((def.defaultValue - def.min) / (def.max - def.min) * 127);
+  const range = def.max - def.min; // -1..127 → 128
+
+  // Convert a CC integer (-1..127) to the normalised 0..1 value JUCE expects
+  function ccToNorm(cc: number): number {
+    return (cc - def.min) / range;
+  }
+  // Convert normalised 0..1 pushed from JUCE back to a CC integer
+  function normToCC(v: number): number {
+    return Math.round(def.min + v * range);
+  }
 
   const wrap = document.createElement('div');
   wrap.style.display = 'flex';
@@ -1019,7 +1376,8 @@ function buildCCInput(id: string): HTMLElement {
   input.type = 'number';
   input.min = '0';
   input.max = '127';
-  input.value = String(ccValue);
+  input.placeholder = '–';
+  input.value = def.defaultValue >= 0 ? String(def.defaultValue) : '';
   input.style.width = '40px';
   input.style.height = '24px';
   input.style.background = `${C.offDark}`;
@@ -1032,29 +1390,94 @@ function buildCCInput(id: string): HTMLElement {
   input.style.textAlign = 'center';
   input.style.cursor = 'pointer';
 
+  function applyCC(cc: number) {
+    cc = Math.max(-1, Math.min(127, cc));
+    input.value = cc >= 0 ? String(cc) : '';
+    setParam(id, ccToNorm(cc));
+  }
+
   input.addEventListener('change', () => {
-    const ccNum = Math.max(0, Math.min(127, parseInt(input.value, 10) || 0));
-    input.value = String(ccNum);
-    const norm = ccNum / 127;
-    setParam(id, norm);
+    const raw = input.value.trim();
+    const cc = raw === '' ? -1 : Math.max(0, Math.min(127, parseInt(raw, 10) || 0));
+    applyCC(cc);
   });
 
   input.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const delta = (e as WheelEvent).deltaY < 0 ? 1 : -1;
-    const ccNum = Math.max(0, Math.min(127, parseInt(input.value, 10) + delta));
-    input.value = String(ccNum);
-    const norm = ccNum / 127;
-    setParam(id, norm);
+    const cur = input.value.trim() === '' ? -1 : parseInt(input.value, 10);
+    applyCC(cur + ((e as WheelEvent).deltaY < 0 ? 1 : -1));
   });
 
   onParam(id, (v) => {
-    const ccNum = Math.round(v * 127);
-    input.value = String(ccNum);
+    const cc = normToCC(v);
+    input.value = cc >= 0 ? String(cc) : '';
   });
 
   wrap.appendChild(label);
   wrap.appendChild(input);
+  return wrap;
+}
+
+// Helper: build an animated waveform shape selector for an LFO
+function buildWaveformSelector(lfoIdx: number): HTMLElement {
+  const color = LFO_COLORS[lfoIdx];
+  const shapes = ['Sine', 'Tri', 'Saw', 'Square'];
+
+  // SVG icon paths for each waveform shape (viewBox 0 0 20 12)
+  const wavePaths: Record<string, string> = {
+    Sine:   'M1 6 C4 1, 6 1, 10 6 C14 11, 16 11, 19 6',
+    Tri:    'M1 6 L5.5 1 L10 11 L14.5 1 L19 6',
+    Saw:    'M1 11 L10 1 L10 11 L19 1',
+    Square: 'M1 11 L1 1 L10 1 L10 11 L19 11 L19 1',
+  };
+
+  const wrap = document.createElement('div');
+  wrap.className = 'waveform-selector';
+  wrap.style.setProperty('--lfo-color', color);
+
+  let currentShapeIdx = 0;
+  const buttons: HTMLButtonElement[] = [];
+
+  shapes.forEach((shape, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'wave-btn' + (idx === 0 ? ' active' : '');
+    btn.style.setProperty('--lfo-color', color);
+    btn.title = shape;
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('width', '20');
+    svg.setAttribute('height', '12');
+    svg.setAttribute('viewBox', '0 0 20 12');
+    svg.style.display = 'block';
+
+    const path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('d', wavePaths[shape]);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', color);
+    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    svg.appendChild(path);
+    btn.appendChild(svg);
+
+    btn.addEventListener('click', () => {
+      currentShapeIdx = idx;
+      buttons.forEach((b, i) => b.classList.toggle('active', i === idx));
+      const norm = shapes.length > 1 ? idx / (shapes.length - 1) : 0;
+      setParam(`lfo${lfoIdx}_shape`, norm);
+    });
+
+    buttons.push(btn);
+    wrap.appendChild(btn);
+  });
+
+  onParam(`lfo${lfoIdx}_shape`, (v) => {
+    const idx = Math.round(v * (shapes.length - 1));
+    currentShapeIdx = idx;
+    buttons.forEach((b, i) => b.classList.toggle('active', i === idx));
+  });
+
   return wrap;
 }
 
@@ -1550,15 +1973,40 @@ lfosGrid.style.gap = '4px';
 midCol.appendChild(lfosGrid);
 
 for (let i = 0; i < 4; i++) {
+  const lfoColor = LFO_COLORS[i];
   const { panel } = makePanel(`LFO ${i + 1}`);
   panel.style.minWidth = '0';
+
+  // Top row: drag handle + waveform selector
+  const topLfoRow = document.createElement('div');
+  topLfoRow.style.cssText = 'display:flex;align-items:center;gap:6px;padding:2px 0;';
+
+  const dragHandle = document.createElement('div');
+  dragHandle.className = 'lfo-drag-handle';
+  dragHandle.style.background = lfoColor;
+  dragHandle.style.setProperty('--lfo-color', lfoColor);
+  dragHandle.draggable = true;
+  dragHandle.title = `Drag LFO ${i + 1} onto a knob to modulate it`;
+
+  dragHandle.addEventListener('dragstart', (e) => {
+    activeDrag = { type: 'lfo', idx: i, color: lfoColor };
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData('text/plain', `lfo:${i}`);
+    }
+  });
+
+  dragHandle.addEventListener('dragend', () => {
+    activeDrag = null;
+  });
+
+  topLfoRow.appendChild(dragHandle);
+  topLfoRow.appendChild(buildWaveformSelector(i));
+
+  panel.appendChild(topLfoRow);
   panel.appendChild(makeKnobsRow(
     buildKnob(`lfo${i}_rate`, 40),
     buildKnob(`lfo${i}_depth`, 40),
-  ));
-  panel.appendChild(makeKnobsRow(
-    buildDropdown(`lfo${i}_shape`, 120),
-    buildDropdown(`lfo${i}_dest`, 120),
   ));
   lfosGrid.appendChild(panel);
 }
@@ -1581,20 +2029,46 @@ for (let i = 0; i < 4; i++) {
     macroCell.style.gap = '4px';
     macroCell.style.alignItems = 'center';
 
+    const macroColor = MACRO_COLORS[i];
+
+    // Header row: drag handle + label
+    const macroHeader = document.createElement('div');
+    macroHeader.style.cssText = 'display:flex;align-items:center;gap:4px;';
+
+    const macroDragHandle = document.createElement('div');
+    macroDragHandle.className = 'macro-drag-handle';
+    macroDragHandle.style.background = macroColor;
+    macroDragHandle.draggable = true;
+    macroDragHandle.title = `Drag Macro ${i + 1} onto a knob to modulate it`;
+
+    macroDragHandle.addEventListener('dragstart', (e) => {
+      activeDrag = { type: 'macro', idx: i, color: macroColor };
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'copy';
+        e.dataTransfer.setData('text/plain', `macro:${i}`);
+      }
+    });
+    macroDragHandle.addEventListener('dragend', () => {
+      activeDrag = null;
+    });
+
     const knobLabel = document.createElement('div');
     knobLabel.style.fontSize = '9px';
     knobLabel.style.color = `${C.white48}`;
     knobLabel.textContent = `M${i + 1}`;
+
+    macroHeader.appendChild(macroDragHandle);
+    macroHeader.appendChild(knobLabel);
 
     const knobRow = document.createElement('div');
     knobRow.style.display = 'flex';
     knobRow.style.gap = '4px';
     knobRow.style.alignItems = 'center';
 
-    knobRow.appendChild(buildKnob(`macro${i}`, 45));
+    knobRow.appendChild(buildKnob(`macro${i}_value`, 45));
     knobRow.appendChild(buildCCInput(`macro${i}_cc`));
 
-    macroCell.appendChild(knobLabel);
+    macroCell.appendChild(macroHeader);
     macroCell.appendChild(knobRow);
     macrosGrid.appendChild(macroCell);
   }

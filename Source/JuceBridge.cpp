@@ -90,6 +90,30 @@ void JuceBridge::pushAllParams()
         if (auto* param = processor.apvts.getParameter (p.apvtsId))
             pushParam (p.apvtsId, param->getValue());
     }
+
+    pushModAssignments();
+}
+
+void JuceBridge::pushModAssignments()
+{
+    const auto& assignments = processor.getModAssignments();
+
+    juce::String json = "[";
+    bool first = true;
+    for (const auto& a : assignments)
+    {
+        if (! first) json << ",";
+        first = false;
+        json << "{"
+             << "\"type\":\"" << (a.sourceType == 0 ? "lfo" : "macro") << "\","
+             << "\"idx\":"    << a.sourceIdx << ","
+             << "\"param\":"  << a.paramName.quoted() << ","
+             << "\"depth\":"  << juce::String (a.depth, 4)
+             << "}";
+    }
+    json << "]";
+
+    goToURL ("javascript:window.__juce && window.__juce.onModAssignments(" + json + ")");
 }
 
 //==============================================================================
@@ -127,6 +151,44 @@ bool JuceBridge::pageAboutToLoad (const juce::String& newURL)
             if (auto* param = processor.apvts.getParameter (id))
                 param->setValueNotifyingHost (value);
         }
+
+        return false; // cancel navigation
+    }
+
+    // Intercept  juce://mod_add?src=<lfo|macro>&idx=<n>&param=<name>&depth=<d>
+    if (newURL.startsWith ("juce://mod_add") || newURL.startsWith ("juce://mod_remove")
+        || newURL.startsWith ("juce://mod_depth"))
+    {
+        juce::String query = newURL.fromFirstOccurrenceOf ("?", false, false);
+
+        juce::String src, paramName;
+        int idx = 0;
+        float depth = 0.5f;
+
+        for (auto& token : juce::StringArray::fromTokens (query, "&", ""))
+        {
+            auto key = token.upToFirstOccurrenceOf ("=", false, false);
+            auto val = token.fromFirstOccurrenceOf ("=", false, false);
+
+            if (key == "src")
+                src = val;
+            else if (key == "idx")
+                idx = val.getIntValue();
+            else if (key == "param")
+                paramName = juce::URL::removeEscapeChars (val);
+            else if (key == "depth")
+                depth = val.getFloatValue();
+        }
+
+        // source_type: 0 = LFO, 1 = Macro
+        const int sourceType = (src == "macro") ? 1 : 0;
+
+        if (newURL.startsWith ("juce://mod_add"))
+            processor.modAdd (sourceType, idx, paramName, depth);
+        else if (newURL.startsWith ("juce://mod_remove"))
+            processor.modRemove (sourceType, idx, paramName);
+        else
+            processor.modSetDepth (sourceType, idx, paramName, depth);
 
         return false; // cancel navigation
     }

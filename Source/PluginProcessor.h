@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <array>
+#include <vector>
 
 extern "C" {
 #include "subtreactional/subtreactional.h"
@@ -68,6 +69,24 @@ public:
     // Returns number of samples written to dest.
     int popAnalyzerSamples (float* dest, int maxSamples);
 
+    // Modulation assignment management (not APVTS params — stored in patch JSON)
+    struct ModAssignment {
+        int          sourceType;   // 0=LFO, 1=Macro
+        int          sourceIdx;    // 0-3
+        juce::String paramName;    // dot notation (e.g. "filter.cutoff")
+        float        depth;        // -1..+1
+    };
+
+    // Add/update a modulation assignment and push to synth
+    void modAdd    (int sourceType, int sourceIdx, const juce::String& paramName, float depth);
+    // Remove a modulation assignment from synth
+    void modRemove (int sourceType, int sourceIdx, const juce::String& paramName);
+    // Update depth of an existing assignment
+    void modSetDepth(int sourceType, int sourceIdx, const juce::String& paramName, float depth);
+
+    // Get current assignments (for UI query)
+    const std::vector<ModAssignment>& getModAssignments() const { return modAssignments_; }
+
 private:
     static constexpr size_t kMempoolSize = 4 * 1024 * 1024; // 4 MB
     char     mempool[kMempoolSize];
@@ -80,6 +99,9 @@ private:
     // Read all values from synth back into APVTS (used after loading a patch)
     void syncApvtsFromSynth();
 
+    // Rebuild modAssignments_ from synth.patch after loading a preset
+    void rebuildModAssignmentsFromPatch();
+
     void pushAnalyzerSamples (const juce::AudioBuffer<float>& buffer);
 
     static constexpr int kAnalyzerFifoSize = 1 << 16;
@@ -88,6 +110,14 @@ private:
 
     // Params with side-effects (panic, realloc) — only applied on change
     float lastPlayMode_ = -1.0f;
+
+    // MIDI CC → macro: written from the audio thread when a CC matches a macro.
+    // A value of -1 means no pending update. Read and cleared at the top of
+    // each processBlock before the APVTS sync so the CC value wins.
+    std::array<std::atomic<float>, ST_MAX_MACROS> pendingMacroCC_;
+
+    // Modulation assignments (persisted alongside patch JSON)
+    std::vector<ModAssignment> modAssignments_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SubtreactionalAudioProcessor)
 };
