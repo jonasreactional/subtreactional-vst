@@ -9,6 +9,15 @@ SubtreactionalAudioProcessorEditor::SubtreactionalAudioProcessorEditor (
 {
     addAndMakeVisible (bridge);
 
+    // Dark overlay sits above the WebView and hides itself once the page loads.
+    addAndMakeVisible (darkCover);
+    bridge.onPageReady = [this]()
+    {
+        // Give JS ~500 ms to finish rendering before revealing the webview.
+        // Timer runs at 30 Hz, so 15 ticks ≈ 500 ms.
+        coverHideCountdown = 15;
+    };
+
     // Subscribe to all parameter changes so preset loads push values to the UI
     for (int i = 0; i < SubtreactionalAudioProcessor::kNumParams; ++i)
         processor.apvts.addParameterListener (
@@ -32,6 +41,7 @@ SubtreactionalAudioProcessorEditor::~SubtreactionalAudioProcessorEditor()
 void SubtreactionalAudioProcessorEditor::resized()
 {
     bridge.setBounds (getLocalBounds());
+    darkCover.setBounds (getLocalBounds());
 }
 
 //==============================================================================
@@ -78,6 +88,12 @@ void SubtreactionalAudioProcessorEditor::parameterChanged (
 
 void SubtreactionalAudioProcessorEditor::timerCallback()
 {
+    if (coverHideCountdown > 0)
+    {
+        if (--coverHideCountdown == 0)
+            darkCover.setVisible (false);
+    }
+
     const int numRead = processor.popAnalyzerSamples (analysisReadBuffer.data(),
                                                       static_cast<int> (analysisReadBuffer.size()));
     if (numRead <= 0)

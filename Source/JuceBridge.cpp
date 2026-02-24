@@ -294,4 +294,7 @@ bool JuceBridge::pageAboutToLoad (const juce::String& newURL)
 void JuceBridge::pageFinishedLoading (const juce::String& /*url*/)
 {
     pushAllParams();
+
+    if (onPageReady)
+        onPageReady();
 }

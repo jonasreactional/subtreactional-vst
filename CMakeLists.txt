@@ -83,6 +83,7 @@ target_sources(SubtreactionalVST
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
         Source/JuceBridge.cpp
+        Source/NativeDarkCover.mm
 )
 
 target_compile_definitions(SubtreactionalVST

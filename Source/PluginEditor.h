@@ -5,6 +5,7 @@
 #include <array>
 #include "PluginProcessor.h"
 #include "JuceBridge.h"
+#include "NativeDarkCover.h"
 
 //==============================================================================
 class SubtreactionalAudioProcessorEditor
@@ -17,7 +18,7 @@ public:
     explicit SubtreactionalAudioProcessorEditor (SubtreactionalAudioProcessor&);
     ~SubtreactionalAudioProcessorEditor() override;
 
-    void paint   (juce::Graphics&) override {}
+    void paint   (juce::Graphics& g) override { g.fillAll (juce::Colour (0xff121212)); }
     void resized () override;
 
     // Consume all key events so the host never intercepts typing in the WebView
@@ -31,6 +32,12 @@ public:
 private:
     SubtreactionalAudioProcessor& processor;
     JuceBridge bridge;
+
+    // Native dark cover that composites on top of WKWebView, hiding the white
+    // flash while the page loads.  Hidden via a short countdown after the page
+    // finishes loading to allow JS to fully render before revealing the view.
+    NativeDarkCover darkCover;
+    int coverHideCountdown = -1;  // -1 = inactive; counts down in timerCallback
 
     // juce::AudioProcessorValueTreeState::Listener
     void parameterChanged (const juce::String& parameterID, float newValue) override;

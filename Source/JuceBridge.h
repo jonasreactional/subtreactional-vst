@@ -35,6 +35,9 @@ public:
     /** Push the full preset list (factory + user) to the web UI. */
     void pushPresetList();
 
+    /** Called once on the message thread when the page has finished loading. */
+    std::function<void()> onPageReady;
+
     //==========================================================================
     // WebBrowserComponent overrides
     bool pageAboutToLoad  (const juce::String& newURL) override;
