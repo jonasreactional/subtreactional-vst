@@ -1944,9 +1944,11 @@ function buildKnob(id: string, size: number, showLabel?: boolean): HTMLElement {
     dragStartY = e.clientY;
     dragStartNorm = currentNormRef;
 
-    // Show value display on drag start
+    // Show value display on drag start with immediate positioning
     const rawValue = def.min + currentNormRef * (def.max - def.min);
     showValueDisplay(rawValue.toFixed(2));
+    valueDisplayPortal.style.left = `${e.clientX + 8}px`;
+    valueDisplayPortal.style.top = `${e.clientY - 16}px`;
 
     window.addEventListener('mousemove', onDragMove);
     window.addEventListener('mouseup', onDragUp);
