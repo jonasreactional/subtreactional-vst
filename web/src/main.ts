@@ -664,6 +664,12 @@ style.textContent = `
   }
 
   /* ─── Knob container drop zone ──────────────────────────────────── */
+  .knob-container.drop-zone-ready {
+    outline: 2px solid color-mix(in srgb, var(--drop-color, #825CED) 45%, transparent);
+    outline-offset: 2px;
+    border-radius: 50%;
+    transition: outline-color 0.15s;
+  }
   .knob-container.drop-target-active {
     outline: 2px solid var(--drop-color, #825CED);
     outline-offset: 2px;
@@ -687,6 +693,7 @@ interface KnobOptions {
 interface KnobControl {
   el: HTMLElement;
   setValue: (normValue: number) => void;
+  setModIndicator: (normModulated: number | null) => void;
 }
 
 function polarToCartesian(cx: number, cy: number, r: number, deg: number): [number, number] {
@@ -771,6 +778,15 @@ function createKnob(opts: KnobOptions): KnobControl {
   const arcPath = document.createElementNS(svgNS, 'path');
   arcPath.setAttribute('fill', `url(#${gradId})`);
   svg.appendChild(arcPath);
+
+  // Modulated value indicator — a small white dot on the arc rim
+  const modDot = document.createElementNS(svgNS, 'circle');
+  modDot.setAttribute('r', String(Math.max(1.2, size * 0.055)));
+  modDot.setAttribute('fill', 'white');
+  modDot.setAttribute('opacity', '0');
+  modDot.style.filter = `drop-shadow(0 0 ${Math.max(1.5, size * 0.065)}px rgba(255,255,255,0.9))`;
+  modDot.style.pointerEvents = 'none';
+  svg.appendChild(modDot);
 
   container.appendChild(svg);
 
@@ -889,6 +905,31 @@ function createKnob(opts: KnobOptions): KnobControl {
     el: wrap,
     setValue(normValue: number) {
       setTarget(normValue);
+    },
+    setModIndicator(normMod: number | null) {
+      if (normMod === null) {
+        modDot.setAttribute('opacity', '0');
+        // Revert arc to actual knob value
+        if (currentNorm < 0.01) {
+          arcPath.setAttribute('d', '');
+        } else {
+          arcPath.setAttribute('d', makeArcPath(cx, cy, arcR * 0.88, 45, 45 + currentNorm * 270));
+        }
+        return;
+      }
+      const norm = Math.max(0, Math.min(1, normMod));
+      const arcAngle = 45 + norm * 270; // arc space: 45=7-o'clock, +270
+      // Update arc to show modulated value (gradient fill follows modulation)
+      if (norm < 0.01) {
+        arcPath.setAttribute('d', '');
+      } else {
+        arcPath.setAttribute('d', makeArcPath(cx, cy, arcR * 0.88, 45, arcAngle));
+      }
+      // Update dot position
+      const [dotX, dotY] = polarToCartesian(cx, cy, arcR * 0.88, arcAngle);
+      modDot.setAttribute('cx', String(dotX.toFixed(2)));
+      modDot.setAttribute('cy', String(dotY.toFixed(2)));
+      modDot.setAttribute('opacity', '0.9');
     },
   };
 }
@@ -1040,6 +1081,17 @@ app.appendChild(mainLayout);
 
 const paramMap = new Map(PARAMS.map((p) => [p.id, p]));
 
+// Track LFO + macro state for the real-time mod indicator RAF loop.
+// onParam receives the normalised 0..1 value; convert to native range here.
+for (let i = 0; i < 4; i++) {
+  const lfoRateDef  = paramMap.get(`lfo${i}_rate`)!;
+  const lfoDepthDef = paramMap.get(`lfo${i}_depth`)!;
+  onParam(`lfo${i}_rate`,     (v) => { lfoRateHz[i] = lfoRateDef.min  + v * (lfoRateDef.max  - lfoRateDef.min);  });
+  onParam(`lfo${i}_depth`,    (v) => { lfoDepthV[i] = lfoDepthDef.min + v * (lfoDepthDef.max - lfoDepthDef.min); });
+  onParam(`lfo${i}_shape`,    (v) => { lfoShapeV[i] = Math.round(v * 3); });
+  onParam(`macro${i}_value`,  (v) => { macroV[i]    = v; });
+}
+
 // ---------------------------------------------------------------------------
 // Modulation drag-and-drop infrastructure
 // ---------------------------------------------------------------------------
@@ -1059,7 +1111,107 @@ interface ModDepthEntry {
   updateArc: (depth: number) => void;
 }
 
+// ---------------------------------------------------------------------------
+// Real-time modulation value visualisation
+// ---------------------------------------------------------------------------
+
+// LFO state (updated by onParam listeners below)
+const lfoRateHz  = [1, 1, 1, 1];
+const lfoDepthV  = [0, 0, 0, 0];
+const lfoShapeV  = [0, 0, 0, 0]; // 0=sine,1=tri,2=saw,3=square
+const macroV     = [0, 0, 0, 0]; // 0..1 raw knob value
+
+// Scales: how much one unit of mod_offset shifts the display-range value
+// Must match st_voice.c multipliers (e.g. filter cutoff * 8000).
+const MOD_DISPLAY_SCALE: Record<string, number> = {
+  filter_cutoff:    8000,
+  filter_resonance: 1,
+  osc1_level:       1,
+  osc1_detune:      100,
+  osc1_pulse_width: 1,
+  osc1_pan:         1,
+  osc2_level:       1,
+  osc2_detune:      100,
+  osc2_pulse_width: 1,
+  osc2_pan:         1,
+  sub_level:        1,
+  ring_mod:         1,
+  pan_spread:       1,
+  master_volume:    1,
+  fx0_mix:          1,
+  fx1_mix:          1,
+  fx2_mix:          1,
+  fx3_mix:          1,
+};
+
+function computeLFOSample(idx: number, tSec: number): number {
+  const phase = ((tSec * lfoRateHz[idx]) % 1 + 1) % 1;
+  const s = lfoShapeV[idx];
+  if (s === 0) return Math.sin(phase * 2 * Math.PI);
+  if (s === 1) return phase < 0.5 ? 4 * phase - 1 : 3 - 4 * phase;
+  if (s === 2) return phase * 2 - 1;
+  return phase < 0.5 ? 1 : -1;
+}
+
+// Per-knob current normalised base value (written by onParam in buildKnob)
+const knobBaseValues       = new Map<string, number>();
+// Per-knob mod indicator setter (written by buildKnob, used by RAF)
+const modIndicatorSetters  = new Map<string, (norm: number | null) => void>();
+// Active updater functions for the RAF loop (keyed by paramId)
+const modIndicatorUpdaters = new Map<string, (tSec: number) => void>();
+
+function registerModIndicatorUpdater(paramId: string): void {
+  if (modIndicatorUpdaters.has(paramId)) return;
+  const def = paramMap.get(paramId);
+  const setter = modIndicatorSetters.get(paramId);
+  if (!def || !setter) return;
+
+  const range = def.max - def.min;
+  const scale = MOD_DISPLAY_SCALE[paramId] ?? 1;
+
+  modIndicatorUpdaters.set(paramId, (tSec: number) => {
+    const assignments = modDepthMap.get(paramId) ?? [];
+    if (assignments.length === 0) {
+      setter(null);
+      modIndicatorUpdaters.delete(paramId);
+      return;
+    }
+    const normBase = knobBaseValues.get(paramId) ?? 0;
+    const displayBase = def.min + normBase * range;
+
+    let displayOffset = 0;
+    for (const a of assignments) {
+      const raw = a.type === 'lfo'
+        ? computeLFOSample(a.idx, tSec) * lfoDepthV[a.idx]
+        : macroV[a.idx] * 2 - 1; // bipolar 0..1 → -1..+1
+      displayOffset += raw * a.depth * scale;
+    }
+
+    const displayMod = Math.max(def.min, Math.min(def.max, displayBase + displayOffset));
+    setter((displayMod - def.min) / range);
+  });
+}
+
+const modRafOrigin = performance.now();
+function modRafLoop(ts: number): void {
+  const tSec = (ts - modRafOrigin) / 1000;
+  modIndicatorUpdaters.forEach((update) => update(tSec));
+  requestAnimationFrame(modRafLoop);
+}
+requestAnimationFrame(modRafLoop);
+
 let activeDrag: ActiveDrag | null = null;
+
+function setAllDropZonesHighlighted(color: string | null) {
+  document.querySelectorAll<HTMLElement>('.knob-container[data-param-id]').forEach((el) => {
+    if (color) {
+      el.style.setProperty('--drop-color', color);
+      el.classList.add('drop-zone-ready');
+    } else {
+      el.classList.remove('drop-zone-ready');
+    }
+  });
+}
 
 // paramId -> list of active mod depth mini-knobs
 const modDepthMap = new Map<string, ModDepthEntry[]>();
@@ -1226,6 +1378,7 @@ onModAssignments((assignments) => {
       updateArc: () => {},
     };
     addModDepthKnob(containerEl, paramId, entry);
+    registerModIndicatorUpdater(paramId);
   }
 });
 
@@ -1261,6 +1414,7 @@ function setupKnobDropZone(containerEl: HTMLElement, paramId: string) {
       updateArc: () => {},
     };
     addModDepthKnob(containerEl, paramId, entry);
+    registerModIndicatorUpdater(paramId);
     sendModAdd(entry.type, entry.idx, modParamName, entry.depth);
   });
 }
@@ -1317,10 +1471,14 @@ function buildKnob(id: string, size: number): HTMLElement {
     knob.setValue(v);
   });
 
-  // Set up modulation drop zone if this is a modulatable parameter
+  // Set up modulation drop zone and real-time indicator for modulatable params
   const dropContainer = knob.el.querySelector('.knob-container') as HTMLElement;
   if (dropContainer && MOD_PARAM_NAMES[id]) {
     setupKnobDropZone(dropContainer, id);
+    modIndicatorSetters.set(id, (norm) => knob.setModIndicator(norm));
+    // Seed the base value tracker so the RAF loop has data immediately
+    knobBaseValues.set(id, normDefault);
+    onParam(id, (v) => { knobBaseValues.set(id, v); });
   }
 
   return knob.el;
@@ -1994,10 +2152,12 @@ for (let i = 0; i < 4; i++) {
       e.dataTransfer.effectAllowed = 'copy';
       e.dataTransfer.setData('text/plain', `lfo:${i}`);
     }
+    setAllDropZonesHighlighted(lfoColor);
   });
 
   dragHandle.addEventListener('dragend', () => {
     activeDrag = null;
+    setAllDropZonesHighlighted(null);
   });
 
   topLfoRow.appendChild(dragHandle);
@@ -2047,9 +2207,11 @@ for (let i = 0; i < 4; i++) {
         e.dataTransfer.effectAllowed = 'copy';
         e.dataTransfer.setData('text/plain', `macro:${i}`);
       }
+      setAllDropZonesHighlighted(macroColor);
     });
     macroDragHandle.addEventListener('dragend', () => {
       activeDrag = null;
+      setAllDropZonesHighlighted(null);
     });
 
     const knobLabel = document.createElement('div');
