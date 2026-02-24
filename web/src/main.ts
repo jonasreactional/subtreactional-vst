@@ -154,8 +154,8 @@ style.textContent = `
   #app {
     display: flex;
     flex-direction: column;
-    width: 1200px;
-    height: 700px;
+    width: 1000px;
+    height: 530px;
     overflow: hidden;
   }
 
@@ -478,6 +478,7 @@ style.textContent = `
 
   .analyzer-panel {
     padding-bottom: 0px;
+    width: 100%;
     
   }
 
@@ -494,7 +495,7 @@ style.textContent = `
   }
 
   .analyzer-canvas-wrap {
-    width: 82px;
+    width: 100%;
     height: 82px;
     flex: 0 0 auto;
     border: 1px solid ${C.offDark3};
@@ -1268,10 +1269,10 @@ leftCol.appendChild(topRow);
   const { panel } = makePanel('Mod');
   panel.style.minWidth = '90px';
   panel.appendChild(makeKnobsRow(
-    buildKnob('sub_level', 44),
+    buildKnob('sub_level', 40),
   ));
     panel.appendChild(makeKnobsRow(
-    buildKnob('ring_mod', 44),
+    buildKnob('ring_mod', 40),
   ));
   topRow.appendChild(panel);
 }
@@ -1283,10 +1284,10 @@ leftCol.appendChild(topRow);
   panel.style.maxWidth = '160px';
   panel.appendChild(buildDropdown('filter_type', 92));
   panel.appendChild(makeKnobsRow(
-    buildKnob('filter_cutoff', 44),
-    buildKnob('filter_resonance', 44),
-    buildKnob('filter_env_amount', 44),
-    buildKnob('filter_vel_amount', 44),
+    buildKnob('filter_cutoff', 40),
+    buildKnob('filter_resonance', 40),
+    buildKnob('filter_env_amount', 40),
+    buildKnob('filter_vel_amount', 40),
   ));
   topRow.appendChild(panel);
 }
@@ -1478,31 +1479,42 @@ for (let i = 0; i < 4; i++) {
   lfosGrid.appendChild(panel);
 }
 
-// Macros 1-4 stacked (with CC inputs)
+// Macros 1-4 grid: 2 per row (with CC inputs)
 {
   const { panel } = makePanel('Macros');
   panel.style.minWidth = '0';
 
+  const macrosGrid = document.createElement('div');
+  macrosGrid.style.display = 'grid';
+  macrosGrid.style.gridTemplateColumns = '1fr 1fr';
+  macrosGrid.style.gap = '6px';
+
   for (let i = 0; i < 4; i++) {
-    const macroRow = document.createElement('div');
-    macroRow.style.display = 'flex';
-    macroRow.style.gap = '6px';
-    macroRow.style.alignItems = 'center';
-    macroRow.style.justifyContent = 'space-between';
+    const macroCell = document.createElement('div');
+    macroCell.style.display = 'flex';
+    macroCell.style.flexDirection = 'column';
+    macroCell.style.gap = '4px';
+    macroCell.style.alignItems = 'center';
 
     const knobLabel = document.createElement('div');
     knobLabel.style.fontSize = '9px';
     knobLabel.style.color = `${C.white48}`;
-    knobLabel.style.minWidth = '40px';
     knobLabel.textContent = `M${i + 1}`;
 
-    macroRow.appendChild(knobLabel);
-    macroRow.appendChild(buildKnob(`macro${i}`, 28));
-    macroRow.appendChild(buildCCInput(`macro${i}_cc`));
+    const knobRow = document.createElement('div');
+    knobRow.style.display = 'flex';
+    knobRow.style.gap = '4px';
+    knobRow.style.alignItems = 'center';
 
-    panel.appendChild(macroRow);
+    knobRow.appendChild(buildKnob(`macro${i}`, 26));
+    knobRow.appendChild(buildCCInput(`macro${i}_cc`));
+
+    macroCell.appendChild(knobLabel);
+    macroCell.appendChild(knobRow);
+    macrosGrid.appendChild(macroCell);
   }
 
+  panel.appendChild(macrosGrid);
   midCol.appendChild(panel);
 }
 
