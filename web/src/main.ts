@@ -377,6 +377,17 @@ style.textContent = `
     background: ${C.offDark3};
   }
 
+  /* Hide number input spinners */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
   /* FX panel layout */
   .fx-rack {
     display: flex;
@@ -1483,6 +1494,7 @@ for (let i = 0; i < 4; i++) {
 {
   const { panel } = makePanel('Macros');
   panel.style.minWidth = '0';
+  panel.style.minHeight = '190px';
 
   const macrosGrid = document.createElement('div');
   macrosGrid.style.display = 'grid';
