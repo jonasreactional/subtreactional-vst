@@ -248,6 +248,9 @@ style.textContent = `
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+
+  .panel.compact-center {
     justify-content: center;
   }
 
@@ -1279,6 +1282,7 @@ leftCol.appendChild(topRow);
 // Sub + Ring Mod
 {
   const { panel } = makePanel('Mod');
+  panel.classList.add('compact-center');
   panel.style.minWidth = '90px';
   panel.appendChild(makeKnobsRow(
     buildKnob('sub_level', 40),
