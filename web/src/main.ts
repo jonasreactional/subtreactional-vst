@@ -984,6 +984,10 @@ style.textContent = `
   }
 
   /* ─── Custom tooltips (fixed positioning) ────────────────────────────────────────── */
+  [data-tooltip] {
+    cursor: default;
+  }
+
   .tooltip-portal {
     position: fixed;
     background: ${C.offDark3};
