@@ -87,11 +87,17 @@ const PARAMS: ParamDef[] = [
   { id: 'play_mode',        label: 'Mode',       min: 0, max: 2,    defaultValue: 0,   type: 'combo', options: PLAY_MODES },
   // Voice count
   { id: 'num_voices', label: 'Voices', min: 0, max: 15, defaultValue: 7, type: 'combo', options: VOICE_COUNTS },
-  // LFO
-  { id: 'lfo_rate',  label: 'Rate', min: 0.1, max: 20, defaultValue: 1, type: 'slider' },
-  { id: 'lfo_depth', label: 'Depth', min: 0, max: 1, defaultValue: 0, type: 'slider' },
-  { id: 'lfo_shape', label: 'Shape', min: 0, max: 3, defaultValue: 0, type: 'combo', options: LFO_SHAPES },
-  { id: 'lfo_dest',  label: 'Dest', min: 0, max: 4, defaultValue: 0, type: 'combo', options: LFO_DESTS },
+  // LFO 1-4
+  ...([0, 1, 2, 3] as const).flatMap((i) => [
+    { id: `lfo${i}_rate`,  label: `LFO${i+1} Rate`, min: 0.1, max: 20, defaultValue: 1, type: 'slider' as const },
+    { id: `lfo${i}_depth`, label: 'Depth', min: 0, max: 1, defaultValue: 0, type: 'slider' as const },
+    { id: `lfo${i}_shape`, label: 'Shape', min: 0, max: 3, defaultValue: 0, type: 'combo' as const, options: LFO_SHAPES },
+    { id: `lfo${i}_dest`,  label: 'Dest', min: 0, max: 4, defaultValue: 0, type: 'combo' as const, options: LFO_DESTS },
+  ]),
+  // Macros 1-4
+  ...([0, 1, 2, 3] as const).flatMap((i) => [
+    { id: `macro${i}`, label: `Macro ${i+1}`, min: 0, max: 1, defaultValue: 0, type: 'slider' as const },
+  ]),
 ];
 
 // ---------------------------------------------------------------------------
@@ -203,6 +209,16 @@ style.textContent = `
   .env-row {
     display: flex;
     gap: 6px;
+  }
+
+  /* Middle column: LFOs + Macros */
+  .mid-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 0 0 auto;
+    width: 120px;
+    overflow-y: auto;
   }
 
   /* Right column: Master */
@@ -1187,10 +1203,10 @@ leftCol.appendChild(topRow);
   const { panel } = makePanel('Mod');
   panel.style.minWidth = '90px';
   panel.appendChild(makeKnobsRow(
-    buildKnob('sub_level', 30),
+    buildKnob('sub_level', 44),
   ));
     panel.appendChild(makeKnobsRow(
-    buildKnob('ring_mod', 30),
+    buildKnob('ring_mod', 44),
   ));
   topRow.appendChild(panel);
 }
@@ -1198,7 +1214,8 @@ leftCol.appendChild(topRow);
 // Filter
 {
   const { panel } = makePanel('Filter');
-  panel.style.minWidth = '220px';
+  
+  panel.style.maxWidth = '160px';
   panel.appendChild(buildDropdown('filter_type', 92));
   panel.appendChild(makeKnobsRow(
     buildKnob('filter_cutoff', 44),
@@ -1237,21 +1254,6 @@ leftCol.appendChild(envRow);
     buildKnob('aenv_decay', 40),
     buildKnob('aenv_sustain', 40),
     buildKnob('aenv_release', 40),
-  ));
-  envRow.appendChild(panel);
-}
-
-// LFO
-{
-  const { panel } = makePanel('LFO');
-  panel.style.minWidth = '100px';
-  panel.appendChild(makeKnobsRow(
-    buildKnob('lfo_rate', 34),
-    buildKnob('lfo_depth', 34),
-  ));
-  panel.appendChild(makeKnobsRow(
-    buildDropdown('lfo_shape', 70),
-    buildDropdown('lfo_dest', 70),
   ));
   envRow.appendChild(panel);
 }
@@ -1379,14 +1381,44 @@ envRow.appendChild(makeAnalyzerPanel());
 
   fxRowWrap.appendChild(panel);
 
-  const fxSidePanel = document.createElement('div');
-  fxSidePanel.className = 'panel fx-side-panel';
-  fxSidePanel.appendChild(buildKnob('pitch_bend_range', 38));
-  fxSidePanel.appendChild(buildKnob('portamento_time', 38));
-  fxSidePanel.appendChild(buildKnob('pan_spread', 38));
-  fxRowWrap.appendChild(fxSidePanel);
 
   leftCol.appendChild(fxRowWrap);
+}
+
+// ---------------------------------------------------------------------------
+// Middle column: LFOs + Macros
+// ---------------------------------------------------------------------------
+const midCol = document.createElement('div');
+midCol.className = 'mid-col';
+mainLayout.appendChild(midCol);
+
+// LFO 1-4 stacked
+for (let i = 0; i < 4; i++) {
+  const { panel } = makePanel(`LFO ${i + 1}`);
+  panel.style.minWidth = '100px';
+  panel.appendChild(makeKnobsRow(
+    buildKnob(`lfo${i}_rate`, 30),
+    buildKnob(`lfo${i}_depth`, 30),
+  ));
+  panel.appendChild(makeKnobsRow(
+    buildDropdown(`lfo${i}_shape`, 65),
+    buildDropdown(`lfo${i}_dest`, 65),
+  ));
+  midCol.appendChild(panel);
+}
+
+// Macros 1-4 stacked
+{
+  const { panel } = makePanel('Macros');
+  panel.style.minWidth = '100px';
+
+  for (let i = 0; i < 4; i++) {
+    panel.appendChild(makeKnobsRow(
+      buildKnob(`macro${i}`, 34),
+    ));
+  }
+
+  midCol.appendChild(panel);
 }
 
 // ---------------------------------------------------------------------------
