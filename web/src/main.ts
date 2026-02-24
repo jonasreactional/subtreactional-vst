@@ -11,8 +11,26 @@ interface ParamDef {
   max: number;
   defaultValue: number;
   step?: number;
+  skew?: number;  // JUCE NormalisableRange skewFactor; value = min + (max-min) * norm^(1/skew)
   type: 'slider' | 'combo';
   options?: string[];
+}
+
+/** Convert normalised 0..1 knob position → actual parameter value (accounts for skew). */
+function normToRaw(norm: number, def: ParamDef): number {
+  if (def.skew && def.skew !== 1) {
+    return def.min + (def.max - def.min) * Math.pow(norm, 1 / def.skew);
+  }
+  return def.min + norm * (def.max - def.min);
+}
+
+/** Convert actual parameter value → normalised 0..1 (accounts for skew). */
+function rawToNorm(raw: number, def: ParamDef): number {
+  if (def.skew && def.skew !== 1) {
+    const t = (raw - def.min) / (def.max - def.min);
+    return Math.pow(Math.max(0, t), def.skew);
+  }
+  return (raw - def.min) / (def.max - def.min);
 }
 
 const OSC_TYPES = ['Off', 'Saw', 'Square', 'Sine', 'Tri', 'Noise'];
@@ -45,22 +63,22 @@ const PARAMS: ParamDef[] = [
   { id: 'sub_level',         label: 'Sub',        min: 0, max: 1, defaultValue: 0, type: 'slider' },
   // Filter
   { id: 'filter_type',       label: 'Type',       min: 0, max: 3, defaultValue: 1, type: 'combo', options: FILTER_TYPES },
-  { id: 'filter_cutoff',     label: 'Cutoff',     min: 20, max: 20000, defaultValue: 2000, type: 'slider' },
+  { id: 'filter_cutoff',     label: 'Cutoff',     min: 20, max: 20000, defaultValue: 2000, skew: 0.25, type: 'slider' },
   { id: 'filter_resonance',  label: 'Res',        min: 0, max: 1, defaultValue: 0.3, type: 'slider' },
   { id: 'filter_env_amount', label: 'Env Amt',    min: 0, max: 1, defaultValue: 0, type: 'slider' },
   { id: 'filter_vel_amount', label: 'Vel Amt',    min: 0, max: 1, defaultValue: 0, type: 'slider' },
   // Ring Modulation
   { id: 'ring_mod',          label: 'Ring Mod',   min: 0, max: 1, defaultValue: 0, type: 'slider' },
   // Filter envelope
-  { id: 'fenv_attack',  label: 'Atk', min: 1, max: 5000, defaultValue: 10,  type: 'slider' },
-  { id: 'fenv_decay',   label: 'Dec', min: 1, max: 5000, defaultValue: 300, type: 'slider' },
+  { id: 'fenv_attack',  label: 'Atk', min: 1, max: 5000, defaultValue: 10,  skew: 0.25, type: 'slider' },
+  { id: 'fenv_decay',   label: 'Dec', min: 1, max: 5000, defaultValue: 300, skew: 0.25, type: 'slider' },
   { id: 'fenv_sustain', label: 'Sus', min: 0, max: 1,    defaultValue: 0,   type: 'slider' },
-  { id: 'fenv_release', label: 'Rel', min: 1, max: 5000, defaultValue: 200, type: 'slider' },
+  { id: 'fenv_release', label: 'Rel', min: 1, max: 5000, defaultValue: 200, skew: 0.25, type: 'slider' },
   // Amp envelope
-  { id: 'aenv_attack',  label: 'Atk', min: 1, max: 5000, defaultValue: 10,  type: 'slider' },
-  { id: 'aenv_decay',   label: 'Dec', min: 1, max: 5000, defaultValue: 200, type: 'slider' },
+  { id: 'aenv_attack',  label: 'Atk', min: 1, max: 5000, defaultValue: 10,  skew: 0.25, type: 'slider' },
+  { id: 'aenv_decay',   label: 'Dec', min: 1, max: 5000, defaultValue: 200, skew: 0.25, type: 'slider' },
   { id: 'aenv_sustain', label: 'Sus', min: 0, max: 1,    defaultValue: 0.7, type: 'slider' },
-  { id: 'aenv_release', label: 'Rel', min: 1, max: 5000, defaultValue: 500, type: 'slider' },
+  { id: 'aenv_release', label: 'Rel', min: 1, max: 5000, defaultValue: 500, skew: 0.25, type: 'slider' },
   // FX slots — types: 0=Off,1=Delay,2=Chorus,3=Flanger,4=Phaser,5=VHS,6=Reverb,7=Distortion
   ...([0, 1, 2, 3] as const).flatMap((i) => [
     { id: `fx${i}_type`,             label: `FX${i} Type`,    min: 0, max: 7,    defaultValue: 0,    type: 'combo' as const, options: FX_TYPES },
@@ -1129,6 +1147,7 @@ interface KnobOptions {
   max: number;
   defaultValue: number; // display-range default
   label: string;
+  skew?: number;  // JUCE skewFactor: value = min + (max-min) * norm^(1/skew)
 }
 
 interface KnobControl {
@@ -1160,8 +1179,10 @@ function valueToKnobAngle(normValue: number): number {
 }
 
 function createKnob(opts: KnobOptions & { showLabel?: boolean }): KnobControl {
-  const { size, min, max, defaultValue, label, showLabel = true } = opts;
-  const normDefault = (defaultValue - min) / (max - min);
+  const { size, min, max, defaultValue, label, skew, showLabel = true } = opts;
+  const normDefault = skew && skew !== 1
+    ? Math.pow(Math.max(0, (defaultValue - min) / (max - min)), skew)
+    : (defaultValue - min) / (max - min);
 
   const wrap = document.createElement('div');
   wrap.className = 'knob-wrap';
@@ -1294,7 +1315,9 @@ function createKnob(opts: KnobOptions & { showLabel?: boolean }): KnobControl {
   let rafId = 0;
 
   function formatVal(norm: number): string {
-    const raw = min + norm * (max - min);
+    const raw = skew && skew !== 1
+      ? min + (max - min) * Math.pow(norm, 1 / skew)
+      : min + norm * (max - min);
     if (max - min >= 100) return raw.toFixed(0);
     if (max - min >= 1) return raw.toFixed(1);
     return raw.toFixed(2);
@@ -1671,7 +1694,7 @@ function registerModIndicatorUpdater(paramId: string): void {
       return;
     }
     const normBase = knobBaseValues.get(paramId) ?? 0;
-    const displayBase = def.min + normBase * range;
+    const displayBase = normToRaw(normBase, def);
 
     let displayOffset = 0;
     for (const a of assignments) {
@@ -1682,7 +1705,7 @@ function registerModIndicatorUpdater(paramId: string): void {
     }
 
     const displayMod = Math.max(def.min, Math.min(def.max, displayBase + displayOffset));
-    setter((displayMod - def.min) / range);
+    setter(rawToNorm(displayMod, def));
   });
 }
 
@@ -1917,8 +1940,8 @@ function setupKnobDropZone(containerEl: HTMLElement, paramId: string) {
 // Helper: create a knob for a slider param + wire it
 function buildKnob(id: string, size: number, showLabel?: boolean): HTMLElement {
   const def = paramMap.get(id)!;
-  const normDefault = (def.defaultValue - def.min) / (def.max - def.min);
-  const knob = createKnob({ size, min: def.min, max: def.max, defaultValue: def.defaultValue, label: def.label, showLabel });
+  const normDefault = rawToNorm(def.defaultValue, def);
+  const knob = createKnob({ size, min: def.min, max: def.max, defaultValue: def.defaultValue, label: def.label, skew: def.skew, showLabel });
 
   knob.setValue(normDefault);
 
@@ -1939,9 +1962,9 @@ function buildKnob(id: string, size: number, showLabel?: boolean): HTMLElement {
 
     // Quantize to step if defined
     if (def.step) {
-      const rawValue = def.min + newNorm * (def.max - def.min);
+      const rawValue = normToRaw(newNorm, def);
       const quantized = Math.round(rawValue / def.step) * def.step;
-      newNorm = (quantized - def.min) / (def.max - def.min);
+      newNorm = rawToNorm(quantized, def);
     }
 
     currentNormRef = newNorm;
@@ -1949,7 +1972,7 @@ function buildKnob(id: string, size: number, showLabel?: boolean): HTMLElement {
     setParam(id, newNorm);
 
     // Update value display with 2 decimal places
-    const rawValue = def.min + newNorm * (def.max - def.min);
+    const rawValue = normToRaw(newNorm, def);
     const displayValue = rawValue.toFixed(2);
     updateValueDisplay(displayValue);
   }
@@ -1966,7 +1989,7 @@ function buildKnob(id: string, size: number, showLabel?: boolean): HTMLElement {
     dragStartNorm = currentNormRef;
 
     // Show value display on drag start with immediate positioning
-    const rawValue = def.min + currentNormRef * (def.max - def.min);
+    const rawValue = normToRaw(currentNormRef, def);
     showValueDisplay(rawValue.toFixed(2));
     valueDisplayPortal.style.left = `${e.clientX + 8}px`;
     valueDisplayPortal.style.top = `${e.clientY - 16}px`;
@@ -1976,7 +1999,7 @@ function buildKnob(id: string, size: number, showLabel?: boolean): HTMLElement {
   });
 
   container.addEventListener('dblclick', () => {
-    const normDefault2 = (def.defaultValue - def.min) / (def.max - def.min);
+    const normDefault2 = rawToNorm(def.defaultValue, def);
     currentNormRef = normDefault2;
     knob.setValue(normDefault2);
     setParam(id, normDefault2);
