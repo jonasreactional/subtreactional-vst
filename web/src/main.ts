@@ -360,6 +360,12 @@ style.textContent = `
   .preset-list::-webkit-scrollbar { width: 4px; }
   .preset-list::-webkit-scrollbar-track { background: transparent; }
   .preset-list::-webkit-scrollbar-thumb { background: ${C.offDark5}; border-radius: 2px; }
+  .preset-list::-webkit-scrollbar-thumb:hover { background: ${C.offDark5}; }
+
+  .dropdown-panel::-webkit-scrollbar { width: 4px; }
+  .dropdown-panel::-webkit-scrollbar-track { background: transparent; }
+  .dropdown-panel::-webkit-scrollbar-thumb { background: ${C.offDark5}; border-radius: 2px; }
+  .dropdown-panel::-webkit-scrollbar-thumb:hover { background: ${C.offDark5}; }
 
   .preset-item {
     padding: 8px 14px;
@@ -583,6 +589,8 @@ style.textContent = `
 
   /* Dropdown */
   .dropdown-wrap {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -639,7 +647,7 @@ style.textContent = `
     background: ${C.offDark2};
     border: 1px solid ${C.offDark3};
     border-radius: 4px;
-    z-index: 100;
+    z-index: 2000;
     max-height: 100px;
     overflow-y: auto;
     display: none;
@@ -721,6 +729,7 @@ style.textContent = `
   }
 
   .fx-slot {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -728,6 +737,22 @@ style.textContent = `
     border: 1px solid ${C.offDark3};
     background: linear-gradient(-10deg, ${C.offDark3}, ${C.offDark2});
     border-radius: 10px;
+  }
+
+  .fx-slot-bg-label {
+    position: absolute;
+    right: 0px;
+    bottom: -6px;
+    font-size: 52px;
+    font-weight: 1000;
+    letter-spacing: -1px;
+    text-transform: uppercase;
+    color: ${C.offWhite};
+    opacity: 0.025;
+    pointer-events: none;
+    user-select: none;
+    white-space: nowrap;
+    line-height: 1;
   }
 
   .fx-slot-label {
@@ -1265,24 +1290,45 @@ function createDropdown(opts: DropdownOptions): DropdownControl {
   });
 
   function openPanel() {
-    // Detect overflow and determine if dropdown should open upward
     const rect = btn.getBoundingClientRect();
-    const panelMaxHeight = 100; // matches .dropdown-panel max-height
-    const viewportHeight = window.innerHeight;
-    const spaceBelow = viewportHeight - rect.bottom;
+    const panelMaxHeight = 100;
+    const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
-    
-    // If not enough space below but more space above, open upward
     const shouldOpenUpward = spaceBelow < panelMaxHeight && spaceAbove > spaceBelow;
-    
+
+    // Portal: move to document.body so it escapes all stacking contexts.
+    // Use 'auto' not '' for top/bottom/right to override CSS class values
+    // (.dropdown-panel has top:calc(100%+2px) and right:0 which would
+    //  misbehave when position:fixed if left as inherited class values).
+    document.body.appendChild(panel);
+    panel.style.position = 'fixed';
+    panel.style.width = rect.width + 'px';
+    panel.style.left = rect.left + 'px';
+    panel.style.right = 'auto';
+    panel.style.zIndex = '9999';
+    if (shouldOpenUpward) {
+      panel.style.top = 'auto';
+      panel.style.bottom = (window.innerHeight - rect.top + 2) + 'px';
+    } else {
+      panel.style.top = (rect.bottom + 2) + 'px';
+      panel.style.bottom = 'auto';
+    }
     panel.classList.add('open');
-    panel.classList.toggle('open-upward', shouldOpenUpward);
     chevron.classList.add('open');
   }
 
   function closePanel() {
     panel.classList.remove('open', 'open-upward');
+    panel.style.position = '';
+    panel.style.width = '';
+    panel.style.left = '';
+    panel.style.right = '';
+    panel.style.top = '';
+    panel.style.bottom = '';
+    panel.style.zIndex = '';
     chevron.classList.remove('open');
+    // Move panel back into its container
+    if (panel.parentNode !== container) container.appendChild(panel);
   }
 
   btn.addEventListener('click', () => {
@@ -2370,6 +2416,11 @@ envRow.appendChild(makeAnalyzerPanel());
 
     paramsWrap.appendChild(paramsScroll);
 
+    // Big transparent type name in the background
+    const bgLabel = document.createElement('div');
+    bgLabel.className = 'fx-slot-bg-label';
+    slot.appendChild(bgLabel);
+
     // Types: 0=Off,1=Delay,2=Chorus,3=Flanger,4=Phaser,5=VHS,6=Reverb,7=Distortion
     function updateFxVisibility(typeIndex: number) {
       const isOff = typeIndex === 0;
@@ -2383,6 +2434,7 @@ envRow.appendChild(makeAnalyzerPanel());
       distortionGroup.style.display = typeIndex === 7 ? 'flex' : 'none';
       offPlaceholdersRow1.style.display = isOff ? 'flex' : 'none';
       offPlaceholdersRow2.style.display = isOff ? 'flex' : 'none';
+      bgLabel.textContent = isOff ? '' : FX_TYPES[typeIndex];
     }
 
     updateFxVisibility(0);
