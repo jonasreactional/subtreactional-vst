@@ -217,7 +217,7 @@ style.textContent = `
     flex-direction: column;
     gap: 6px;
     flex: 0 0 auto;
-    width: 120px;
+    width: 244px;
     overflow-y: auto;
   }
 
@@ -1392,19 +1392,25 @@ const midCol = document.createElement('div');
 midCol.className = 'mid-col';
 mainLayout.appendChild(midCol);
 
-// LFO 1-4 stacked
+// LFOs grid: 2 per row
+const lfosGrid = document.createElement('div');
+lfosGrid.style.display = 'grid';
+lfosGrid.style.gridTemplateColumns = '1fr 1fr';
+lfosGrid.style.gap = '6px';
+midCol.appendChild(lfosGrid);
+
 for (let i = 0; i < 4; i++) {
   const { panel } = makePanel(`LFO ${i + 1}`);
-  panel.style.minWidth = '100px';
+  panel.style.minWidth = '0';
   panel.appendChild(makeKnobsRow(
-    buildKnob(`lfo${i}_rate`, 30),
-    buildKnob(`lfo${i}_depth`, 30),
+    buildKnob(`lfo${i}_rate`, 28),
+    buildKnob(`lfo${i}_depth`, 28),
   ));
   panel.appendChild(makeKnobsRow(
-    buildDropdown(`lfo${i}_shape`, 65),
-    buildDropdown(`lfo${i}_dest`, 65),
+    buildDropdown(`lfo${i}_shape`, 60),
+    buildDropdown(`lfo${i}_dest`, 60),
   ));
-  midCol.appendChild(panel);
+  lfosGrid.appendChild(panel);
 }
 
 // Macros 1-4 stacked
