@@ -2362,9 +2362,9 @@ leftCol.appendChild(topRow);
     buildKnob('osc1_level', 40),
     buildKnob('osc1_detune', 40),
     buildKnob('osc1_octave', 40),
-    buildKnob('osc1_pulse_width', 40),
   ));
   panel.appendChild(makeKnobsRow(
+    buildKnob('osc1_pulse_width', 40),
     buildKnob('osc1_pan', 40),
     buildKnob('osc1_pan_spread', 40),
   ));
@@ -2381,9 +2381,9 @@ leftCol.appendChild(topRow);
     buildKnob('osc2_level', 40),
     buildKnob('osc2_detune', 40),
     buildKnob('osc2_octave', 40),
-    buildKnob('osc2_pulse_width', 40),
   ));
   panel.appendChild(makeKnobsRow(
+    buildKnob('osc2_pulse_width', 40),
     buildKnob('osc2_pan', 40),
     buildKnob('osc2_pan_spread', 40),
   ));
