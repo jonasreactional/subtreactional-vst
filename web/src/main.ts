@@ -248,6 +248,7 @@ style.textContent = `
     display: flex;
     flex-direction: column;
     gap: 6px;
+    justify-content: center;
   }
 
   .panel-title {
