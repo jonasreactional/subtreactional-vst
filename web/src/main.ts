@@ -223,6 +223,7 @@ style.textContent = `
     flex: 0 0 auto;
     width: 244px;
     overflow-y: auto;
+    align-items: center;
   }
 
   /* Right column: Master */
@@ -248,6 +249,7 @@ style.textContent = `
     display: flex;
     flex-direction: column;
     gap: 6px;
+    align-items: center;
   }
 
   .panel-title {
@@ -264,7 +266,7 @@ style.textContent = `
   .knobs-row {
     display: flex;
     gap: 6px;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
     flex-wrap: wrap;
   }
