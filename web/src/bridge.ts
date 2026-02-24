@@ -19,22 +19,35 @@ export interface ModAssignmentInfo {
   depth: number;
 }
 
+export interface PresetInfo {
+  name: string;
+  author: string;
+  description: string;
+  category: string;
+  source: 'factory' | 'user';
+  idx?: number;       // factory presets
+  path?: string;      // user presets
+}
+
 interface JuceBridgeGlobal {
   onParam(id: string, value: number): void;
   onWaveform(values: number[]): void;
   onSpectrogram(values: number[]): void;
   onModAssignments(assignments: ModAssignmentInfo[]): void;
+  onPresets(presets: PresetInfo[]): void;
 }
 
 type Listener = (value: number) => void;
 type AnalyzerListener = (values: number[]) => void;
 type ModAssignmentsListener = (assignments: ModAssignmentInfo[]) => void;
+type PresetsListener = (presets: PresetInfo[]) => void;
 
 const listeners = new Map<string, Set<Listener>>();
 const lastParamValues = new Map<string, number>();
 const waveformListeners = new Set<AnalyzerListener>();
 const spectrogramListeners = new Set<AnalyzerListener>();
 const modAssignmentsListeners = new Set<ModAssignmentsListener>();
+const presetsListeners = new Set<PresetsListener>();
 
 // Install the global that C++ will call
 window.__juce = {
@@ -50,6 +63,9 @@ window.__juce = {
   },
   onModAssignments(assignments: ModAssignmentInfo[]) {
     modAssignmentsListeners.forEach((fn) => fn(assignments));
+  },
+  onPresets(presets: PresetInfo[]) {
+    presetsListeners.forEach((fn) => fn(presets));
   },
 };
 
@@ -105,4 +121,26 @@ export function sendModRemove(type: 'lfo' | 'macro', idx: number, paramName: str
 /** Update depth of an existing modulation assignment */
 export function sendModSetDepth(type: 'lfo' | 'macro', idx: number, paramName: string, depth: number): void {
   window.location.href = `juce://mod_depth?src=${type}&idx=${idx}&param=${encodeURIComponent(paramName)}&depth=${depth}`;
+}
+
+/** Subscribe to preset list pushed from C++. Returns unsubscribe function. */
+export function onPresets(fn: PresetsListener): () => void {
+  presetsListeners.add(fn);
+  return () => presetsListeners.delete(fn);
+}
+
+/** Load a factory preset by index */
+export function sendLoadFactoryPreset(idx: number): void {
+  window.location.href = `juce://preset_load_factory?idx=${idx}`;
+}
+
+/** Load a user preset by file path */
+export function sendLoadUserPreset(path: string): void {
+  window.location.href = `juce://preset_load_user?path=${encodeURIComponent(path)}`;
+}
+
+/** Save current patch as a user preset */
+export function sendSavePreset(name: string, author: string, desc: string): void {
+  window.location.href =
+    `juce://preset_save?name=${encodeURIComponent(name)}&author=${encodeURIComponent(author)}&desc=${encodeURIComponent(desc)}`;
 }

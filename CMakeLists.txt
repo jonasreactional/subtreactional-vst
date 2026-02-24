@@ -42,6 +42,29 @@ else()
     set(HAVE_WEB_UI FALSE)
 endif()
 
+# Factory presets baked into the binary
+juce_add_binary_data(SubtreactionalPresets
+    HEADER_NAME "PresetBinaryData.h"
+    NAMESPACE   PresetData
+    SOURCES
+        "presets/Bass/Acid Bass.json"
+        "presets/Bass/Reese Bass.json"
+        "presets/Bass/Sub Bass.json"
+        "presets/Bass/Wobble Bass.json"
+        "presets/Lead/Dirty Lead.json"
+        "presets/Lead/Mono Lead.json"
+        "presets/Lead/PWM Lead.json"
+        "presets/Lead/Supersaw Lead.json"
+        "presets/Pad/Atmospheric Pad.json"
+        "presets/Pad/Noise Pad.json"
+        "presets/Pad/String Pad.json"
+        "presets/Pad/Warm Pad.json"
+        "presets/Pluck/Harp.json"
+        "presets/Pluck/Metallic Pluck.json"
+        "presets/Pluck/Pluck.json"
+        "presets/Pluck/Rhodes Pluck.json"
+)
+
 juce_add_plugin(SubtreactionalVST
     PLUGIN_MANUFACTURER_CODE  RCTL
     PLUGIN_CODE               Stre
@@ -72,6 +95,7 @@ target_compile_definitions(SubtreactionalVST
 target_link_libraries(SubtreactionalVST
     PRIVATE
         subtreactional
+        SubtreactionalPresets
         juce::juce_audio_utils
         juce::juce_audio_plugin_client
         juce::juce_dsp

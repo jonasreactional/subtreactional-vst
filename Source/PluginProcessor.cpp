@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "PresetBinaryData.h"
 
 #include <cstring>
 #include <cstdlib>
@@ -663,6 +664,134 @@ void SubtreactionalAudioProcessor::pushAnalyzerSamples (const juce::AudioBuffer<
     writeRange (start2, size2, size1);
 
     analyzerFifo.finishedWrite (size1 + size2);
+}
+
+//==============================================================================
+// Factory preset manifest
+//==============================================================================
+namespace {
+struct FactoryEntry { const char* data; int size; const char* category; const char* name; };
+static const FactoryEntry kFactory[] = {
+    { PresetData::Acid_Bass_json,       PresetData::Acid_Bass_jsonSize,       "Bass",  "Acid Bass"       },
+    { PresetData::Reese_Bass_json,      PresetData::Reese_Bass_jsonSize,      "Bass",  "Reese Bass"      },
+    { PresetData::Sub_Bass_json,        PresetData::Sub_Bass_jsonSize,        "Bass",  "Sub Bass"        },
+    { PresetData::Wobble_Bass_json,     PresetData::Wobble_Bass_jsonSize,     "Bass",  "Wobble Bass"     },
+    { PresetData::Dirty_Lead_json,      PresetData::Dirty_Lead_jsonSize,      "Lead",  "Dirty Lead"      },
+    { PresetData::Mono_Lead_json,       PresetData::Mono_Lead_jsonSize,       "Lead",  "Mono Lead"       },
+    { PresetData::PWM_Lead_json,        PresetData::PWM_Lead_jsonSize,        "Lead",  "PWM Lead"        },
+    { PresetData::Supersaw_Lead_json,   PresetData::Supersaw_Lead_jsonSize,   "Lead",  "Supersaw Lead"   },
+    { PresetData::Atmospheric_Pad_json, PresetData::Atmospheric_Pad_jsonSize, "Pad",   "Atmospheric Pad" },
+    { PresetData::Noise_Pad_json,       PresetData::Noise_Pad_jsonSize,       "Pad",   "Noise Pad"       },
+    { PresetData::String_Pad_json,      PresetData::String_Pad_jsonSize,      "Pad",   "String Pad"      },
+    { PresetData::Warm_Pad_json,        PresetData::Warm_Pad_jsonSize,        "Pad",   "Warm Pad"        },
+    { PresetData::Harp_json,            PresetData::Harp_jsonSize,            "Pluck", "Harp"            },
+    { PresetData::Metallic_Pluck_json,  PresetData::Metallic_Pluck_jsonSize,  "Pluck", "Metallic Pluck"  },
+    { PresetData::Pluck_json,           PresetData::Pluck_jsonSize,           "Pluck", "Pluck"           },
+    { PresetData::Rhodes_Pluck_json,    PresetData::Rhodes_Pluck_jsonSize,    "Pluck", "Rhodes Pluck"    },
+};
+static constexpr int kNumFactory = (int)(sizeof(kFactory) / sizeof(kFactory[0]));
+} // namespace
+
+juce::File SubtreactionalAudioProcessor::getUserPresetsDir() const
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+               .getChildFile ("Reactional")
+               .getChildFile ("Subtreactional")
+               .getChildFile ("Presets");
+}
+
+juce::Array<SubtreactionalAudioProcessor::PresetInfo>
+SubtreactionalAudioProcessor::getPresetList() const
+{
+    juce::Array<PresetInfo> list;
+
+    for (int i = 0; i < kNumFactory; ++i)
+    {
+        juce::String json (juce::CharPointer_UTF8 (kFactory[i].data),
+                           (size_t) kFactory[i].size);
+        auto j = juce::JSON::fromString (json);
+        PresetInfo p;
+        p.isFactory   = true;
+        p.factoryIdx  = i;
+        p.category    = kFactory[i].category;
+        p.name        = j.getProperty ("name",        kFactory[i].name).toString();
+        p.author      = j.getProperty ("author",      "").toString();
+        p.description = j.getProperty ("description", "").toString();
+        list.add (p);
+    }
+
+    const juce::File dir = getUserPresetsDir();
+    if (dir.isDirectory())
+    {
+        for (auto& f : dir.findChildFiles (juce::File::findFiles, false, "*.json"))
+        {
+            auto j = juce::JSON::fromString (f.loadFileAsString());
+            PresetInfo p;
+            p.isFactory   = false;
+            p.filePath    = f.getFullPathName();
+            p.category    = "User";
+            p.name        = j.getProperty ("name",        f.getFileNameWithoutExtension()).toString();
+            p.author      = j.getProperty ("author",      "").toString();
+            p.description = j.getProperty ("description", "").toString();
+            list.add (p);
+        }
+    }
+    return list;
+}
+
+void SubtreactionalAudioProcessor::loadFactoryPreset (int idx)
+{
+    if (idx < 0 || idx >= kNumFactory) return;
+    const juce::String json (juce::CharPointer_UTF8 (kFactory[idx].data),
+                             (size_t) kFactory[idx].size);
+    const auto utf8 = json.toUTF8();
+    setStateInformation (utf8.getAddress(), (int) std::strlen (utf8.getAddress()));
+}
+
+void SubtreactionalAudioProcessor::loadUserPreset (const juce::String& filePath)
+{
+    const juce::File f (filePath);
+    if (! f.existsAsFile()) return;
+    const juce::String json = f.loadFileAsString();
+    const auto utf8 = json.toUTF8();
+    setStateInformation (utf8.getAddress(), (int) std::strlen (utf8.getAddress()));
+}
+
+void SubtreactionalAudioProcessor::setPatchMeta (const juce::String& name,
+                                                  const juce::String& author,
+                                                  const juce::String& description)
+{
+    if (! synthInitialised) return;
+    name.copyToUTF8        (synth.patch.name,        sizeof (synth.patch.name));
+    author.copyToUTF8      (synth.patch.author,      sizeof (synth.patch.author));
+    description.copyToUTF8 (synth.patch.description, sizeof (synth.patch.description));
+}
+
+void SubtreactionalAudioProcessor::saveUserPreset (const juce::String& name,
+                                                    const juce::String& author,
+                                                    const juce::String& description)
+{
+    if (! synthInitialised) return;
+    setPatchMeta (name, author, description);
+
+    juce::MemoryBlock mb;
+    getStateInformation (mb);
+    if (mb.isEmpty()) return;
+
+    const juce::File dir = getUserPresetsDir();
+    dir.createDirectory();
+
+    juce::String safeName = name;
+    for (juce::juce_wchar ch : { (juce::juce_wchar)'/', (juce::juce_wchar)'\\',
+                                  (juce::juce_wchar)':', (juce::juce_wchar)'*',
+                                  (juce::juce_wchar)'?', (juce::juce_wchar)'"',
+                                  (juce::juce_wchar)'<', (juce::juce_wchar)'>',
+                                  (juce::juce_wchar)'|' })
+        safeName = safeName.replaceCharacter (ch, '_');
+    if (safeName.isEmpty()) safeName = "Untitled";
+
+    juce::File out = dir.getChildFile (safeName + ".json");
+    out.replaceWithData (mb.getData(), mb.getSize());
 }
 
 //==============================================================================

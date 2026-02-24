@@ -32,6 +32,9 @@ public:
     /** Push all current modulation assignments to the web UI. */
     void pushModAssignments();
 
+    /** Push the full preset list (factory + user) to the web UI. */
+    void pushPresetList();
+
     //==========================================================================
     // WebBrowserComponent overrides
     bool pageAboutToLoad  (const juce::String& newURL) override;

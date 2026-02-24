@@ -1,5 +1,7 @@
 {
   "name": "Harp",
+  "author": "Reactional",
+  "description": "Long decaying triangular pluck with generous reverb",
   "version": 1,
   "polyphony": 12,
   "play_mode": "poly",
@@ -9,31 +11,112 @@
   "pitch_bend_range": 2.0,
   "voice": {
     "oscillators": [
-      { "type": "tri", "level": 0.9, "detune": 0.0, "octave": 0, "pulse_width": 0.5, "pan": 0.0, "pan_spread": 1.0 },
-      { "type": "off", "level": 0.5, "detune": 0.0, "octave": 0, "pulse_width": 0.5, "pan": 0.0, "pan_spread": 1.0 }
+      {
+        "type": "tri",
+        "level": 0.9,
+        "detune": 0.0,
+        "octave": 0,
+        "pulse_width": 0.5,
+        "pan": 0.0,
+        "pan_spread": 1.0
+      },
+      {
+        "type": "off",
+        "level": 0.5,
+        "detune": 0.0,
+        "octave": 0,
+        "pulse_width": 0.5,
+        "pan": 0.0,
+        "pan_spread": 1.0
+      }
     ],
     "sub_level": 0.0,
     "ring_mod": 0.0,
-    "filter": { "type": "lp", "cutoff": 4500.0, "resonance": 0.15, "env_amount": 0.3, "vel_amount": 0.2 },
-    "filter_envelope": { "attack":  1.0, "decay": 400.0, "sustain": 0.0, "release": 300.0 },
-    "amp_envelope":    { "attack":  1.0, "decay": 1800.0, "sustain": 0.0, "release": 600.0 }
+    "filter": {
+      "type": "lp",
+      "cutoff": 4500.0,
+      "resonance": 0.15,
+      "env_amount": 0.3,
+      "vel_amount": 0.2
+    },
+    "filter_envelope": {
+      "attack": 1.0,
+      "decay": 400.0,
+      "sustain": 0.0,
+      "release": 300.0
+    },
+    "amp_envelope": {
+      "attack": 1.0,
+      "decay": 1800.0,
+      "sustain": 0.0,
+      "release": 600.0
+    }
   },
   "effects": [
-    { "type": "reverb", "mix": 0.3, "t60": 3.0 },
-    { "type": "off", "mix": 0.0 },
-    { "type": "off", "mix": 0.0 },
-    { "type": "off", "mix": 0.0 }
+    {
+      "type": "reverb",
+      "mix": 0.3,
+      "t60": 3.0
+    },
+    {
+      "type": "off",
+      "mix": 0.0
+    },
+    {
+      "type": "off",
+      "mix": 0.0
+    },
+    {
+      "type": "off",
+      "mix": 0.0
+    }
   ],
   "lfos": [
-    { "shape": "sine", "rate": 1.0, "depth": 0.0, "targets": [] },
-    { "shape": "sine", "rate": 1.0, "depth": 0.0, "targets": [] },
-    { "shape": "sine", "rate": 1.0, "depth": 0.0, "targets": [] },
-    { "shape": "sine", "rate": 1.0, "depth": 0.0, "targets": [] }
+    {
+      "shape": "sine",
+      "rate": 1.0,
+      "depth": 0.0,
+      "targets": []
+    },
+    {
+      "shape": "sine",
+      "rate": 1.0,
+      "depth": 0.0,
+      "targets": []
+    },
+    {
+      "shape": "sine",
+      "rate": 1.0,
+      "depth": 0.0,
+      "targets": []
+    },
+    {
+      "shape": "sine",
+      "rate": 1.0,
+      "depth": 0.0,
+      "targets": []
+    }
   ],
   "macros": [
-    { "value": 0.0, "cc": -1, "targets": [] },
-    { "value": 0.0, "cc": -1, "targets": [] },
-    { "value": 0.0, "cc": -1, "targets": [] },
-    { "value": 0.0, "cc": -1, "targets": [] }
+    {
+      "value": 0.0,
+      "cc": -1,
+      "targets": []
+    },
+    {
+      "value": 0.0,
+      "cc": -1,
+      "targets": []
+    },
+    {
+      "value": 0.0,
+      "cc": -1,
+      "targets": []
+    },
+    {
+      "value": 0.0,
+      "cc": -1,
+      "targets": []
+    }
   ]
 }

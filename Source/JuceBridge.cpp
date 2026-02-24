@@ -92,6 +92,45 @@ void JuceBridge::pushAllParams()
     }
 
     pushModAssignments();
+    pushPresetList();
+}
+
+void JuceBridge::pushPresetList()
+{
+    const auto list = processor.getPresetList();
+
+    juce::String json = "[";
+    bool first = true;
+    for (const auto& p : list)
+    {
+        if (! first) json << ",";
+        first = false;
+
+        auto esc = [] (const juce::String& s) -> juce::String
+        {
+            return s.replace ("\\", "\\\\")
+                    .replace ("\"", "\\\"")
+                    .replace ("\n", "\\n")
+                    .replace ("\r", "");
+        };
+
+        json << "{"
+             << "\"name\":"        << esc(p.name).quoted()        << ","
+             << "\"author\":"      << esc(p.author).quoted()      << ","
+             << "\"description\":" << esc(p.description).quoted() << ","
+             << "\"category\":"    << esc(p.category).quoted()    << ","
+             << "\"source\":\""    << (p.isFactory ? "factory" : "user") << "\",";
+
+        if (p.isFactory)
+            json << "\"idx\":" << p.factoryIdx;
+        else
+            json << "\"path\":" << esc(p.filePath).quoted();
+
+        json << "}";
+    }
+    json << "]";
+
+    goToURL ("javascript:window.__juce && window.__juce.onPresets(" + json + ")");
 }
 
 void JuceBridge::pushModAssignments()
@@ -191,6 +230,62 @@ bool JuceBridge::pageAboutToLoad (const juce::String& newURL)
             processor.modSetDepth (sourceType, idx, paramName, depth);
 
         return false; // cancel navigation
+    }
+
+    // juce://preset_load_factory?idx=N
+    if (newURL.startsWith ("juce://preset_load_factory"))
+    {
+        juce::String query = newURL.fromFirstOccurrenceOf ("?", false, false);
+        int idx = -1;
+        for (auto& token : juce::StringArray::fromTokens (query, "&", ""))
+        {
+            auto key = token.upToFirstOccurrenceOf ("=", false, false);
+            auto val = token.fromFirstOccurrenceOf ("=", false, false);
+            if (key == "idx") idx = val.getIntValue();
+        }
+        const int capturedIdx = idx;
+        juce::MessageManager::callAsync ([this, capturedIdx]() {
+            processor.loadFactoryPreset (capturedIdx);
+            pushPresetList();
+        });
+        return false;
+    }
+
+    // juce://preset_load_user?path=<url-encoded-path>
+    if (newURL.startsWith ("juce://preset_load_user"))
+    {
+        juce::String query = newURL.fromFirstOccurrenceOf ("?", false, false);
+        juce::String path;
+        for (auto& token : juce::StringArray::fromTokens (query, "&", ""))
+        {
+            auto key = token.upToFirstOccurrenceOf ("=", false, false);
+            auto val = token.fromFirstOccurrenceOf ("=", false, false);
+            if (key == "path") path = juce::URL::removeEscapeChars (val);
+        }
+        juce::MessageManager::callAsync ([this, path]() {
+            processor.loadUserPreset (path);
+        });
+        return false;
+    }
+
+    // juce://preset_save?name=...&author=...&desc=...
+    if (newURL.startsWith ("juce://preset_save"))
+    {
+        juce::String query = newURL.fromFirstOccurrenceOf ("?", false, false);
+        juce::String name, author, desc;
+        for (auto& token : juce::StringArray::fromTokens (query, "&", ""))
+        {
+            auto key = token.upToFirstOccurrenceOf ("=", false, false);
+            auto val = juce::URL::removeEscapeChars (token.fromFirstOccurrenceOf ("=", false, false));
+            if      (key == "name")   name   = val;
+            else if (key == "author") author = val;
+            else if (key == "desc")   desc   = val;
+        }
+        juce::MessageManager::callAsync ([this, name, author, desc]() {
+            processor.saveUserPreset (name, author, desc);
+            pushPresetList();
+        });
+        return false;
     }
 
     return true; // allow all other navigations

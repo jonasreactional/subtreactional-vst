@@ -87,6 +87,29 @@ public:
     // Get current assignments (for UI query)
     const std::vector<ModAssignment>& getModAssignments() const { return modAssignments_; }
 
+    //==========================================================================
+    // Preset management
+    struct PresetInfo {
+        juce::String name;
+        juce::String author;
+        juce::String description;
+        juce::String category;
+        bool         isFactory  = false;
+        int          factoryIdx = -1;
+        juce::String filePath;
+    };
+
+    juce::Array<PresetInfo> getPresetList() const;
+    void loadFactoryPreset (int idx);
+    void loadUserPreset    (const juce::String& filePath);
+    void saveUserPreset    (const juce::String& name,
+                            const juce::String& author,
+                            const juce::String& description);
+    void setPatchMeta      (const juce::String& name,
+                            const juce::String& author,
+                            const juce::String& description);
+    juce::File getUserPresetsDir() const;
+
 private:
     static constexpr size_t kMempoolSize = 4 * 1024 * 1024; // 4 MB
     char     mempool[kMempoolSize];

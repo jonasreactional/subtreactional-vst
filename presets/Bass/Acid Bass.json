@@ -1,5 +1,7 @@
 {
   "name": "Acid Bass",
+  "author": "Reactional",
+  "description": "Classic TB-303 style acid bass with resonant filter envelope",
   "version": 1,
   "polyphony": 1,
   "play_mode": "mono",
@@ -9,31 +11,112 @@
   "pitch_bend_range": 12.0,
   "voice": {
     "oscillators": [
-      { "type": "square", "level": 0.9, "detune": 0.0, "octave": -1, "pulse_width": 0.5, "pan": 0.0, "pan_spread": 0.0 },
-      { "type": "off",    "level": 0.5, "detune": 0.0, "octave":  0, "pulse_width": 0.5, "pan": 0.0, "pan_spread": 1.0 }
+      {
+        "type": "square",
+        "level": 0.9,
+        "detune": 0.0,
+        "octave": -1,
+        "pulse_width": 0.5,
+        "pan": 0.0,
+        "pan_spread": 0.0
+      },
+      {
+        "type": "off",
+        "level": 0.5,
+        "detune": 0.0,
+        "octave": 0,
+        "pulse_width": 0.5,
+        "pan": 0.0,
+        "pan_spread": 1.0
+      }
     ],
     "sub_level": 0.3,
     "ring_mod": 0.0,
-    "filter": { "type": "lp", "cutoff": 300.0, "resonance": 0.75, "env_amount": 0.85, "vel_amount": 0.3 },
-    "filter_envelope": { "attack": 1.0,  "decay": 180.0, "sustain": 0.0, "release": 80.0  },
-    "amp_envelope":    { "attack": 2.0,  "decay":  10.0, "sustain": 1.0, "release": 80.0  }
+    "filter": {
+      "type": "lp",
+      "cutoff": 300.0,
+      "resonance": 0.75,
+      "env_amount": 0.85,
+      "vel_amount": 0.3
+    },
+    "filter_envelope": {
+      "attack": 1.0,
+      "decay": 180.0,
+      "sustain": 0.0,
+      "release": 80.0
+    },
+    "amp_envelope": {
+      "attack": 2.0,
+      "decay": 10.0,
+      "sustain": 1.0,
+      "release": 80.0
+    }
   },
   "effects": [
-    { "type": "distortion", "mix": 0.12, "drive": 1.8 },
-    { "type": "off", "mix": 0.0 },
-    { "type": "off", "mix": 0.0 },
-    { "type": "off", "mix": 0.0 }
+    {
+      "type": "distortion",
+      "mix": 0.12,
+      "drive": 1.8
+    },
+    {
+      "type": "off",
+      "mix": 0.0
+    },
+    {
+      "type": "off",
+      "mix": 0.0
+    },
+    {
+      "type": "off",
+      "mix": 0.0
+    }
   ],
   "lfos": [
-    { "shape": "sine", "rate": 1.0, "depth": 0.0, "targets": [] },
-    { "shape": "sine", "rate": 1.0, "depth": 0.0, "targets": [] },
-    { "shape": "sine", "rate": 1.0, "depth": 0.0, "targets": [] },
-    { "shape": "sine", "rate": 1.0, "depth": 0.0, "targets": [] }
+    {
+      "shape": "sine",
+      "rate": 1.0,
+      "depth": 0.0,
+      "targets": []
+    },
+    {
+      "shape": "sine",
+      "rate": 1.0,
+      "depth": 0.0,
+      "targets": []
+    },
+    {
+      "shape": "sine",
+      "rate": 1.0,
+      "depth": 0.0,
+      "targets": []
+    },
+    {
+      "shape": "sine",
+      "rate": 1.0,
+      "depth": 0.0,
+      "targets": []
+    }
   ],
   "macros": [
-    { "value": 0.0, "cc": -1, "targets": [] },
-    { "value": 0.0, "cc": -1, "targets": [] },
-    { "value": 0.0, "cc": -1, "targets": [] },
-    { "value": 0.0, "cc": -1, "targets": [] }
+    {
+      "value": 0.0,
+      "cc": -1,
+      "targets": []
+    },
+    {
+      "value": 0.0,
+      "cc": -1,
+      "targets": []
+    },
+    {
+      "value": 0.0,
+      "cc": -1,
+      "targets": []
+    },
+    {
+      "value": 0.0,
+      "cc": -1,
+      "targets": []
+    }
   ]
 }

@@ -1,4 +1,4 @@
-import { setParam, onParam, onWaveform, onSpectrogram, notifyHostReady, sendModAdd, sendModRemove, sendModSetDepth, onModAssignments } from './bridge';
+import { setParam, onParam, onWaveform, onSpectrogram, notifyHostReady, sendModAdd, sendModRemove, sendModSetDepth, onModAssignments, onPresets, sendLoadFactoryPreset, sendLoadUserPreset, sendSavePreset, type PresetInfo } from './bridge';
 
 // ---------------------------------------------------------------------------
 // Parameter definitions — mirrors PluginProcessor.cpp kParams
@@ -213,6 +213,247 @@ style.textContent = `
     background: ${C.purple};
     box-shadow: 0 0 8px ${C.purpleGlow};
   }
+
+  /* ─── Preset selector (header center) ───────────────────── */
+  .preset-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .preset-name-btn {
+    background: ${C.offDark3};
+    border: 1px solid ${C.offDark5};
+    border-radius: 4px;
+    color: ${C.offWhite};
+    font-size: 11px;
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 3px 10px;
+    cursor: pointer;
+    min-width: 140px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .preset-name-btn:hover {
+    border-color: ${C.purple};
+    background: ${C.offDark4};
+  }
+
+  .preset-save-btn {
+    background: transparent;
+    border: 1px solid ${C.offDark5};
+    border-radius: 4px;
+    color: ${C.white48};
+    font-size: 10px;
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .preset-save-btn:hover {
+    border-color: ${C.purple};
+    color: ${C.offWhite};
+  }
+
+  /* ─── Preset modal ────────────────────────────────────────── */
+  .preset-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .preset-modal {
+    background: ${C.offDark2};
+    border: 1px solid ${C.offDark4};
+    border-radius: 8px;
+    width: 520px;
+    height: 380px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+  }
+
+  .preset-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid ${C.offDark4};
+    flex-shrink: 0;
+  }
+  .preset-modal-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: ${C.offWhite};
+  }
+  .preset-modal-close {
+    background: none;
+    border: none;
+    color: ${C.white48};
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+  }
+  .preset-modal-close:hover { color: ${C.offWhite}; }
+
+  .preset-modal-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .preset-categories {
+    width: 90px;
+    border-right: 1px solid ${C.offDark4};
+    padding: 6px 0;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .preset-cat-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: ${C.white48};
+    cursor: pointer;
+    transition: color 0.1s, background 0.1s;
+  }
+  .preset-cat-btn:hover { color: ${C.offWhite}; background: ${C.offDark3}; }
+  .preset-cat-btn.active { color: ${C.purple}; background: ${C.offDark3}; }
+
+  .preset-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+  }
+  .preset-list::-webkit-scrollbar { width: 4px; }
+  .preset-list::-webkit-scrollbar-track { background: transparent; }
+  .preset-list::-webkit-scrollbar-thumb { background: ${C.offDark5}; border-radius: 2px; }
+
+  .preset-item {
+    padding: 8px 14px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: background 0.1s, border-color 0.1s;
+  }
+  .preset-item:hover { background: ${C.offDark3}; }
+  .preset-item.active { border-left-color: ${C.purple}; background: ${C.offDark3}; }
+  .preset-item-name {
+    font-size: 12px;
+    color: ${C.offWhite};
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+  .preset-item-meta {
+    font-size: 10px;
+    color: ${C.white48};
+  }
+  .preset-item-desc {
+    font-size: 10px;
+    color: ${C.white48};
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .preset-item-user-badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: ${C.offDark5};
+    color: ${C.orange};
+    margin-left: 5px;
+  }
+
+  /* ─── Save preset dialog ──────────────────────────────────── */
+  .save-dialog {
+    background: ${C.offDark2};
+    border: 1px solid ${C.offDark4};
+    border-radius: 8px;
+    width: 320px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+  }
+  .save-dialog-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: ${C.offWhite};
+    margin-bottom: 2px;
+  }
+  .save-dialog input, .save-dialog textarea {
+    background: ${C.offDark3};
+    border: 1px solid ${C.offDark5};
+    border-radius: 4px;
+    color: ${C.offWhite};
+    font-size: 11px;
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 5px 8px;
+    width: 100%;
+    box-sizing: border-box;
+    resize: none;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .save-dialog input:focus, .save-dialog textarea:focus {
+    border-color: ${C.purple};
+  }
+  .save-dialog label {
+    font-size: 10px;
+    color: ${C.white48};
+    display: block;
+    margin-bottom: 3px;
+  }
+  .save-dialog-row {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .save-dialog-cancel {
+    background: none;
+    border: 1px solid ${C.offDark5};
+    border-radius: 4px;
+    color: ${C.white48};
+    font-size: 10px;
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 4px 12px;
+    cursor: pointer;
+  }
+  .save-dialog-confirm {
+    background: ${C.purple};
+    border: 1px solid ${C.purple};
+    border-radius: 4px;
+    color: white;
+    font-size: 10px;
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .save-dialog-confirm:hover { opacity: 0.85; }
 
   .main-layout {
     display: flex;
@@ -1070,12 +1311,31 @@ const app = document.getElementById('app')!;
 // Header
 const header = document.createElement('div');
 header.className = 'header';
+header.style.position = 'relative';
+
 const headerTitle = document.createElement('div');
 headerTitle.className = 'header-title';
 headerTitle.textContent = 'Subtreactional';
+
+// Center: preset selector
+const presetSelector = document.createElement('div');
+presetSelector.className = 'preset-selector';
+
+const presetNameBtn = document.createElement('button');
+presetNameBtn.className = 'preset-name-btn';
+presetNameBtn.textContent = 'Init';
+presetSelector.appendChild(presetNameBtn);
+
+const presetSaveBtn = document.createElement('button');
+presetSaveBtn.className = 'preset-save-btn';
+presetSaveBtn.textContent = 'Save';
+presetSelector.appendChild(presetSaveBtn);
+
 const headerAccent = document.createElement('div');
 headerAccent.className = 'header-accent';
+
 header.appendChild(headerTitle);
+header.appendChild(presetSelector);
 header.appendChild(headerAccent);
 app.appendChild(header);
 
@@ -2279,3 +2539,197 @@ mainLayout.appendChild(rightCol);
 }
 
 notifyHostReady();
+
+// ---------------------------------------------------------------------------
+// Preset modal
+// ---------------------------------------------------------------------------
+
+let allPresets: PresetInfo[] = [];
+let currentPresetName = 'Init';
+
+function updatePresetNameBtn() {
+  presetNameBtn.textContent = currentPresetName;
+}
+
+// Track current patch name when params are updated (preset loads push "name" via onPresets)
+onPresets((presets) => {
+  allPresets = presets;
+});
+
+function openPresetModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'preset-modal-overlay';
+
+  const modal = document.createElement('div');
+  modal.className = 'preset-modal';
+
+  // Header
+  const mHeader = document.createElement('div');
+  mHeader.className = 'preset-modal-header';
+  const mTitle = document.createElement('div');
+  mTitle.className = 'preset-modal-title';
+  mTitle.textContent = 'Presets';
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'preset-modal-close';
+  closeBtn.textContent = '✕';
+  closeBtn.addEventListener('click', () => overlay.remove());
+  mHeader.appendChild(mTitle);
+  mHeader.appendChild(closeBtn);
+  modal.appendChild(mHeader);
+
+  // Body
+  const body = document.createElement('div');
+  body.className = 'preset-modal-body';
+
+  // Category sidebar
+  const catSidebar = document.createElement('div');
+  catSidebar.className = 'preset-categories';
+
+  const listPane = document.createElement('div');
+  listPane.className = 'preset-list';
+
+  const categories = ['All', ...Array.from(new Set(allPresets.map((p) => p.category))).sort()];
+  let activeCategory = 'All';
+
+  function renderList() {
+    listPane.innerHTML = '';
+    const filtered = activeCategory === 'All'
+      ? allPresets
+      : allPresets.filter((p) => p.category === activeCategory);
+
+    filtered.forEach((preset) => {
+      const item = document.createElement('div');
+      item.className = 'preset-item';
+      if (preset.name === currentPresetName) item.classList.add('active');
+
+      const nameLine = document.createElement('div');
+      nameLine.className = 'preset-item-name';
+      nameLine.textContent = preset.name;
+      if (preset.source === 'user') {
+        const badge = document.createElement('span');
+        badge.className = 'preset-item-user-badge';
+        badge.textContent = 'user';
+        nameLine.appendChild(badge);
+      }
+
+      const metaLine = document.createElement('div');
+      metaLine.className = 'preset-item-meta';
+      metaLine.textContent = [preset.author, preset.category].filter(Boolean).join(' · ');
+
+      item.appendChild(nameLine);
+      item.appendChild(metaLine);
+
+      if (preset.description) {
+        const descLine = document.createElement('div');
+        descLine.className = 'preset-item-desc';
+        descLine.textContent = preset.description;
+        item.appendChild(descLine);
+      }
+
+      item.addEventListener('click', () => {
+        if (preset.source === 'factory' && preset.idx !== undefined) {
+          sendLoadFactoryPreset(preset.idx);
+        } else if (preset.source === 'user' && preset.path) {
+          sendLoadUserPreset(preset.path);
+        }
+        currentPresetName = preset.name;
+        updatePresetNameBtn();
+        overlay.remove();
+      });
+
+      listPane.appendChild(item);
+    });
+  }
+
+  categories.forEach((cat) => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-cat-btn' + (cat === activeCategory ? ' active' : '');
+    btn.textContent = cat;
+    btn.addEventListener('click', () => {
+      activeCategory = cat;
+      catSidebar.querySelectorAll('.preset-cat-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderList();
+    });
+    catSidebar.appendChild(btn);
+  });
+
+  renderList();
+
+  body.appendChild(catSidebar);
+  body.appendChild(listPane);
+  modal.appendChild(body);
+
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function openSaveDialog() {
+  const overlay = document.createElement('div');
+  overlay.className = 'preset-modal-overlay';
+
+  const dialog = document.createElement('div');
+  dialog.className = 'save-dialog';
+
+  const title = document.createElement('div');
+  title.className = 'save-dialog-title';
+  title.textContent = 'Save Preset';
+  dialog.appendChild(title);
+
+  function field(labelText: string, placeholder: string, multiline = false): HTMLInputElement | HTMLTextAreaElement {
+    const wrap = document.createElement('div');
+    const lbl = document.createElement('label');
+    lbl.textContent = labelText;
+    wrap.appendChild(lbl);
+    const el = multiline
+      ? Object.assign(document.createElement('textarea'), { rows: 2, placeholder })
+      : Object.assign(document.createElement('input'), { type: 'text', placeholder });
+    wrap.appendChild(el);
+    dialog.appendChild(wrap);
+    return el as HTMLInputElement | HTMLTextAreaElement;
+  }
+
+  const nameInput   = field('Name',        currentPresetName) as HTMLInputElement;
+  nameInput.value   = currentPresetName;
+  const authorInput = field('Author',      'Your name') as HTMLInputElement;
+  const descInput   = field('Description', 'Describe the sound…', true);
+
+  const row = document.createElement('div');
+  row.className = 'save-dialog-row';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'save-dialog-cancel';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', () => overlay.remove());
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'save-dialog-confirm';
+  confirmBtn.textContent = 'Save';
+  confirmBtn.addEventListener('click', () => {
+    const name = nameInput.value.trim() || 'Untitled';
+    sendSavePreset(name, authorInput.value.trim(), descInput.value.trim());
+    currentPresetName = name;
+    updatePresetNameBtn();
+    overlay.remove();
+  });
+
+  row.appendChild(cancelBtn);
+  row.appendChild(confirmBtn);
+  dialog.appendChild(row);
+
+  overlay.appendChild(dialog);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  nameInput.select();
+}
+
+presetNameBtn.addEventListener('click', openPresetModal);
+presetSaveBtn.addEventListener('click', openSaveDialog);
+
+// Update preset name display when a patch is loaded externally (drag-drop, DAW recall)
+onPresets((presets) => {
+  // C++ sends updated list after load — the first user preset added or factory preset
+  // name comes through here; we don't track which was loaded, so just leave it as-is.
+  // The name gets updated when the user explicitly clicks a preset.
+});
