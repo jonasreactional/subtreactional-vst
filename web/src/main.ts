@@ -25,6 +25,7 @@ const VOICE_COUNTS = Array.from({ length: 16 }, (_, i) => String(i + 1)); // '1'
 const PARAMS: ParamDef[] = [
   // OSC 1
   { id: 'osc1_type',         label: 'OSC1 Type',  min: 0, max: 5,   defaultValue: 1,   type: 'combo', options: OSC_TYPES },
+  { id: 'osc1_pitch',        label: 'Pitch',      min: -24, max: 24, defaultValue: 0,  step: 0.01, type: 'slider' },
   { id: 'osc1_level',        label: 'Level',      min: 0, max: 1,   defaultValue: 0.7, type: 'slider' },
   { id: 'osc1_detune',       label: 'Detune',     min: -50, max: 50, defaultValue: 0,  type: 'slider' },
   { id: 'osc1_octave',       label: 'Octave',     min: -2, max: 2,  defaultValue: 0,   step: 1, type: 'slider' },
@@ -33,6 +34,7 @@ const PARAMS: ParamDef[] = [
   { id: 'osc1_pan_spread',   label: 'Spread',     min: 0, max: 1,   defaultValue: 1,   type: 'slider' },
   // OSC 2
   { id: 'osc2_type',         label: 'OSC2 Type',  min: 0, max: 5,   defaultValue: 0,   type: 'combo', options: OSC_TYPES },
+  { id: 'osc2_pitch',        label: 'Pitch',      min: -24, max: 24, defaultValue: 0,  step: 0.01, type: 'slider' },
   { id: 'osc2_level',        label: 'Level',      min: 0, max: 1,   defaultValue: 0,   type: 'slider' },
   { id: 'osc2_detune',       label: 'Detune',     min: -50, max: 50, defaultValue: 0,  type: 'slider' },
   { id: 'osc2_octave',       label: 'Octave',     min: -2, max: 2,  defaultValue: 0,   step: 1, type: 'slider' },
@@ -108,10 +110,12 @@ const MACRO_COLORS = ['#F04E4E', '#4EF0A3', '#F0C24E', '#4E90F0'];
 
 // Maps UI param IDs to C modulation param names (dot notation for st_synth_mod_add)
 const MOD_PARAM_NAMES: Record<string, string> = {
+  'osc1_pitch':       'osc1.pitch',
   'osc1_level':       'osc1.level',
   'osc1_detune':      'osc1.detune',
   'osc1_pulse_width': 'osc1.pulse_width',
   'osc1_pan':         'osc1.pan',
+  'osc2_pitch':       'osc2.pitch',
   'osc2_level':       'osc2.level',
   'osc2_detune':      'osc2.detune',
   'osc2_pulse_width': 'osc2.pulse_width',
@@ -2354,6 +2358,7 @@ leftCol.appendChild(topRow);
   panel.style.minWidth = '210px';
   panel.appendChild(buildDropdown('osc1_type', 92));
   panel.appendChild(makeKnobsRow(
+    buildKnob('osc1_pitch', 40),
     buildKnob('osc1_level', 40),
     buildKnob('osc1_detune', 40),
     buildKnob('osc1_octave', 40),
@@ -2372,6 +2377,7 @@ leftCol.appendChild(topRow);
   panel.style.minWidth = '210px';
   panel.appendChild(buildDropdown('osc2_type', 92));
   panel.appendChild(makeKnobsRow(
+    buildKnob('osc2_pitch', 40),
     buildKnob('osc2_level', 40),
     buildKnob('osc2_detune', 40),
     buildKnob('osc2_octave', 40),

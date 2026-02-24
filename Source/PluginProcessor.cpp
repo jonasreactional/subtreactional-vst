@@ -17,6 +17,7 @@ extern "C" {
 const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     // OSC 1
     { "osc1_type",           "osc1.type" },
+    { "osc1_pitch",          "osc1.pitch" },
     { "osc1_level",          "osc1.level" },
     { "osc1_detune",         "osc1.detune" },
     { "osc1_octave",         "osc1.octave" },
@@ -25,6 +26,7 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "osc1_pan_spread",     "osc1.pan_spread" },
     // OSC 2
     { "osc2_type",           "osc2.type" },
+    { "osc2_pitch",          "osc2.pitch" },
     { "osc2_level",          "osc2.level" },
     { "osc2_detune",         "osc2.detune" },
     { "osc2_octave",         "osc2.octave" },
@@ -178,6 +180,7 @@ SubtreactionalAudioProcessor::createParameterLayout()
 
     // OSC 1  (default: saw, full level)
     addCombo ("osc1_type",       {"Off","Saw","Square","Sine","Tri","Noise"}, 1);
+    addSlider("osc1_pitch",     -24.0f, 24.0f,  0.0f, 0.01f);
     addSlider("osc1_level",      0.0f, 1.0f,   0.7f, 0.001f);
     addSlider("osc1_detune",   -50.0f, 50.0f,  0.0f, 0.1f);
     addSlider("osc1_octave",    -2.0f, 2.0f,   0.0f, 1.0f);
@@ -187,6 +190,7 @@ SubtreactionalAudioProcessor::createParameterLayout()
 
     // OSC 2  (default: off)
     addCombo ("osc2_type",       {"Off","Saw","Square","Sine","Tri","Noise"}, 0);
+    addSlider("osc2_pitch",     -24.0f, 24.0f,  0.0f, 0.01f);
     addSlider("osc2_level",      0.0f, 1.0f,   0.0f, 0.001f);
     addSlider("osc2_detune",   -50.0f, 50.0f,  0.0f, 0.1f);
     addSlider("osc2_octave",    -2.0f, 2.0f,   0.0f, 1.0f);
