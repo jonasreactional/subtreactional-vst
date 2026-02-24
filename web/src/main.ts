@@ -177,6 +177,7 @@ style.textContent = `
     height: 530px;
     user-select: none;
     -webkit-user-select: none;
+    cursor: default;
   }
 
   #app {
