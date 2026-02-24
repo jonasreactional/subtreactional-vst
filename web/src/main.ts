@@ -70,14 +70,14 @@ const PARAMS: ParamDef[] = [
     { id: `fx${i}_chorus_depth`,     label: 'Depth',           min: 0, max: 1,    defaultValue: 0.4,  type: 'slider' as const },
     { id: `fx${i}_reverb_t60`,       label: 'Rvb T60',         min: 0.1, max: 10, defaultValue: 2.0,  type: 'slider' as const },
     { id: `fx${i}_distortion_drive`, label: 'Drive',           min: 0, max: 10,   defaultValue: 1.0,  type: 'slider' as const },
-    { id: `fx${i}_vhs_wow_rate`,     label: 'Wow Rate',        min: 0.1, max: 5,  defaultValue: 0.35, type: 'slider' as const },
-    { id: `fx${i}_vhs_wow_depth`,    label: 'Wow Depth',       min: 0, max: 1,    defaultValue: 0.25, type: 'slider' as const },
-    { id: `fx${i}_vhs_flutter_rate`, label: 'Flutter Rate',    min: 1, max: 20,   defaultValue: 6.0,  type: 'slider' as const },
-    { id: `fx${i}_vhs_flutter_depth`,label: 'Flutter Depth',   min: 0, max: 1,    defaultValue: 0.15, type: 'slider' as const },
+    { id: `fx${i}_vhs_wow_rate`,     label: 'Wow',             min: 0.1, max: 5,  defaultValue: 0.35, type: 'slider' as const },
+    { id: `fx${i}_vhs_wow_depth`,    label: 'Wow %',           min: 0, max: 1,    defaultValue: 0.25, type: 'slider' as const },
+    { id: `fx${i}_vhs_flutter_rate`, label: 'Fltr',            min: 1, max: 20,   defaultValue: 6.0,  type: 'slider' as const },
+    { id: `fx${i}_vhs_flutter_depth`,label: 'Fltr %',          min: 0, max: 1,    defaultValue: 0.15, type: 'slider' as const },
     { id: `fx${i}_vhs_drive`,        label: 'Drive',           min: 0, max: 1,    defaultValue: 0.25, type: 'slider' as const },
     { id: `fx${i}_vhs_tone`,         label: 'Tone',            min: 0, max: 1,    defaultValue: 0.35, type: 'slider' as const },
     { id: `fx${i}_vhs_noise`,        label: 'Noise',           min: 0, max: 1,    defaultValue: 0.1,  type: 'slider' as const },
-    { id: `fx${i}_vhs_dropout`,      label: 'Dropout',         min: 0, max: 1,    defaultValue: 0.05, type: 'slider' as const },
+    { id: `fx${i}_vhs_dropout`,      label: 'Drop',            min: 0, max: 1,    defaultValue: 0.05, type: 'slider' as const },
   ]),
   // Master
   { id: 'master_volume',    label: 'Master',     min: 0, max: 1,    defaultValue: 0.8, type: 'slider' },
@@ -109,7 +109,7 @@ const PARAMS: ParamDef[] = [
 // ---------------------------------------------------------------------------
 
 const C = {
-  offWhite:        '#ECECEC',
+  offWhite:        '#dddddd',
   offDark:         '#000000',
   offDark1:        '#121212',
   offDark2:        '#1A1D22',
@@ -190,15 +190,15 @@ style.textContent = `
     display: flex;
     flex: 1;
     overflow: hidden;
-    padding: 6px;
-    gap: 6px;
+    padding: 4px;
+    gap: 4px;
   }
 
   /* Left column: OSC + Filter + Envelopes + FX */
   .left-col {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     flex: 1;
     min-height: 0;
   }
@@ -206,20 +206,20 @@ style.textContent = `
   /* Top row of left col: OSC1 + OSC2 + Filter */
   .top-row {
     display: flex;
-    gap: 6px;
+    gap: 4px;
   }
 
   /* Bottom row of left col: FilterEnv + AmpEnv */
   .env-row {
     display: flex;
-    gap: 6px;
+    gap: 4px;
   }
 
   /* Middle column: LFOs + Macros */
   .mid-col {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     flex: 0 0 auto;
     width: 244px;
     overflow-y: auto;
@@ -229,13 +229,13 @@ style.textContent = `
   .right-col {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     flex: 0 0 auto;
   }
 
   .fx-grid {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     flex: 1;
     min-height: 0;
   }
@@ -243,35 +243,35 @@ style.textContent = `
   .panel {
     background: ${C.offDark2};
     border: 1px solid ${C.offDark3};
-    border-radius: 6px;
-    padding: 8px 10px;
+    border-radius: 4px;
+    padding: 6px 8px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
   }
 
   .panel-content-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     justify-content: center;
     flex: 1;
   }
 
   .panel-title {
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 500;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
     text-transform: uppercase;
     color: ${C.white48};
-    padding-bottom: 5px;
+    padding-bottom: 3px;
     border-bottom: 1px solid ${C.offDark3};
     flex-shrink: 0;
   }
 
   .knobs-row {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
@@ -281,7 +281,7 @@ style.textContent = `
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
+    gap: 2px;
   }
 
   .knob-label {
@@ -400,15 +400,15 @@ style.textContent = `
   .fx-rack {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 6px 8px;
+    gap: 3px;
+    padding: 4px 6px;
     flex: 1;
     min-width: 0;
   }
 
   .fx-row-wrap {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     align-items: flex-start;
   }
 
@@ -427,13 +427,13 @@ style.textContent = `
 
   .fx-rack-grid {
     display: flex;
-    gap: 8px;
+    gap: 4px;
   }
 
   .fx-rack-col {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     flex: 1;
     min-width: 0;
   }
@@ -441,8 +441,8 @@ style.textContent = `
   .fx-slot {
     display: flex;
     align-items: center;
-    gap: 6px;
-    min-height: 64px;
+    gap: 4px;
+    min-height: 60px;
   }
 
   .fx-slot-label {
@@ -458,25 +458,42 @@ style.textContent = `
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 6px;
+    gap: 4px;
     flex: 1;
     min-width: 0;
   }
 
   .fx-slot-params {
     display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 4px;
+    flex-direction: column;
     flex: 1;
     min-width: 0;
+  }
+
+  .fx-params-scroll {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 3px;
+    flex-wrap: wrap;
+    min-height: 85px;
+    max-height: 85px;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+
+  .fx-param-placeholder {
+    opacity: 0.3;
+    pointer-events: none;
   }
 
   .fx-param-group {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 4px;
+    gap: 3px;
+    flex-wrap: wrap;
+    width: 100%;
   }
 
   .master-panel {
@@ -1401,53 +1418,83 @@ envRow.appendChild(makeAnalyzerPanel());
 
     const delayGroup = document.createElement('div');
     delayGroup.className = 'fx-param-group';
-    delayGroup.appendChild(buildKnob(`fx${i}_delay_time`, 30));
-    delayGroup.appendChild(buildKnob(`fx${i}_delay_feedback`, 30));
+    delayGroup.appendChild(buildKnob(`fx${i}_delay_time`, 26));
+    delayGroup.appendChild(buildKnob(`fx${i}_delay_feedback`, 26));
 
     const chorusGroup = document.createElement('div');
     chorusGroup.className = 'fx-param-group';
-    chorusGroup.appendChild(buildKnob(`fx${i}_chorus_rate`, 30));
-    chorusGroup.appendChild(buildKnob(`fx${i}_chorus_depth`, 30));
+    chorusGroup.appendChild(buildKnob(`fx${i}_chorus_rate`, 26));
+    chorusGroup.appendChild(buildKnob(`fx${i}_chorus_depth`, 26));
 
     // Flanger and Phaser share chorus_rate/depth + delay_feedback for feedback
     const flangerGroup = document.createElement('div');
     flangerGroup.className = 'fx-param-group';
-    flangerGroup.appendChild(buildKnob(`fx${i}_chorus_rate`, 30));
-    flangerGroup.appendChild(buildKnob(`fx${i}_chorus_depth`, 30));
-    flangerGroup.appendChild(buildKnob(`fx${i}_delay_feedback`, 30));
+    flangerGroup.appendChild(buildKnob(`fx${i}_chorus_rate`, 26));
+    flangerGroup.appendChild(buildKnob(`fx${i}_chorus_depth`, 26));
+    flangerGroup.appendChild(buildKnob(`fx${i}_delay_feedback`, 26));
 
     const phaserGroup = document.createElement('div');
     phaserGroup.className = 'fx-param-group';
-    phaserGroup.appendChild(buildKnob(`fx${i}_chorus_rate`, 30));
-    phaserGroup.appendChild(buildKnob(`fx${i}_chorus_depth`, 30));
-    phaserGroup.appendChild(buildKnob(`fx${i}_delay_feedback`, 30));
+    phaserGroup.appendChild(buildKnob(`fx${i}_chorus_rate`, 26));
+    phaserGroup.appendChild(buildKnob(`fx${i}_chorus_depth`, 26));
+    phaserGroup.appendChild(buildKnob(`fx${i}_delay_feedback`, 26));
 
     const vhsGroup = document.createElement('div');
     vhsGroup.className = 'fx-param-group';
-    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_wow_rate`, 30));
-    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_wow_depth`, 30));
-    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_flutter_rate`, 30));
-    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_flutter_depth`, 30));
-    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_drive`, 30));
-    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_tone`, 30));
-    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_noise`, 30));
-    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_dropout`, 30));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_wow_rate`, 26));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_wow_depth`, 26));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_flutter_rate`, 26));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_flutter_depth`, 26));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_drive`, 26));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_tone`, 26));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_noise`, 26));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_dropout`, 26));
 
     const reverbGroup = document.createElement('div');
     reverbGroup.className = 'fx-param-group';
-    reverbGroup.appendChild(buildKnob(`fx${i}_reverb_t60`, 30));
+    reverbGroup.appendChild(buildKnob(`fx${i}_reverb_t60`, 26));
 
     const distortionGroup = document.createElement('div');
     distortionGroup.className = 'fx-param-group';
-    distortionGroup.appendChild(buildKnob(`fx${i}_distortion_drive`, 30));
+    distortionGroup.appendChild(buildKnob(`fx${i}_distortion_drive`, 26));
 
-    paramsWrap.appendChild(delayGroup);
-    paramsWrap.appendChild(chorusGroup);
-    paramsWrap.appendChild(flangerGroup);
-    paramsWrap.appendChild(phaserGroup);
-    paramsWrap.appendChild(vhsGroup);
-    paramsWrap.appendChild(reverbGroup);
-    paramsWrap.appendChild(distortionGroup);
+    // Create scrollable container for all param groups
+    const paramsScroll = document.createElement('div');
+    paramsScroll.className = 'fx-params-scroll';
+
+    paramsScroll.appendChild(delayGroup);
+    paramsScroll.appendChild(chorusGroup);
+    paramsScroll.appendChild(flangerGroup);
+    paramsScroll.appendChild(phaserGroup);
+    paramsScroll.appendChild(vhsGroup);
+    paramsScroll.appendChild(reverbGroup);
+    paramsScroll.appendChild(distortionGroup);
+
+    // Create placeholder knobs for OFF state (4 per row)
+    const offPlaceholdersRow1 = document.createElement('div');
+    offPlaceholdersRow1.className = 'fx-param-group';
+    for (let p = 0; p < 4; p++) {
+      const knobWrap = document.createElement('div');
+      knobWrap.className = 'knob-wrap fx-param-placeholder';
+      knobWrap.style.pointerEvents = 'none';
+      knobWrap.innerHTML = '<canvas style="width: 26px; height: 26px; background: rgba(58, 64, 73, 0.5); border-radius: 4px;"></canvas><div class="knob-label">–</div>';
+      offPlaceholdersRow1.appendChild(knobWrap);
+    }
+
+    const offPlaceholdersRow2 = document.createElement('div');
+    offPlaceholdersRow2.className = 'fx-param-group';
+    for (let p = 0; p < 4; p++) {
+      const knobWrap = document.createElement('div');
+      knobWrap.className = 'knob-wrap fx-param-placeholder';
+      knobWrap.style.pointerEvents = 'none';
+      knobWrap.innerHTML = '<canvas style="width: 26px; height: 26px; background: rgba(58, 64, 73, 0.5); border-radius: 4px;"></canvas><div class="knob-label">–</div>';
+      offPlaceholdersRow2.appendChild(knobWrap);
+    }
+
+    paramsScroll.appendChild(offPlaceholdersRow1);
+    paramsScroll.appendChild(offPlaceholdersRow2);
+
+    paramsWrap.appendChild(paramsScroll);
 
     // Types: 0=Off,1=Delay,2=Chorus,3=Flanger,4=Phaser,5=VHS,6=Reverb,7=Distortion
     function updateFxVisibility(typeIndex: number) {
@@ -1460,6 +1507,8 @@ envRow.appendChild(makeAnalyzerPanel());
       vhsGroup.style.display        = typeIndex === 5 ? 'flex' : 'none';
       reverbGroup.style.display     = typeIndex === 6 ? 'flex' : 'none';
       distortionGroup.style.display = typeIndex === 7 ? 'flex' : 'none';
+      offPlaceholdersRow1.style.display = isOff ? 'flex' : 'none';
+      offPlaceholdersRow2.style.display = isOff ? 'flex' : 'none';
     }
 
     updateFxVisibility(0);
@@ -1495,20 +1544,21 @@ mainLayout.appendChild(midCol);
 // LFOs grid: 2 per row
 const lfosGrid = document.createElement('div');
 lfosGrid.style.display = 'grid';
+lfosGrid.style.minHeight = '294px';
 lfosGrid.style.gridTemplateColumns = '1fr 1fr';
-lfosGrid.style.gap = '6px';
+lfosGrid.style.gap = '4px';
 midCol.appendChild(lfosGrid);
 
 for (let i = 0; i < 4; i++) {
   const { panel } = makePanel(`LFO ${i + 1}`);
   panel.style.minWidth = '0';
   panel.appendChild(makeKnobsRow(
-    buildKnob(`lfo${i}_rate`, 28),
-    buildKnob(`lfo${i}_depth`, 28),
+    buildKnob(`lfo${i}_rate`, 40),
+    buildKnob(`lfo${i}_depth`, 40),
   ));
   panel.appendChild(makeKnobsRow(
-    buildDropdown(`lfo${i}_shape`, 60),
-    buildDropdown(`lfo${i}_dest`, 60),
+    buildDropdown(`lfo${i}_shape`, 120),
+    buildDropdown(`lfo${i}_dest`, 120),
   ));
   lfosGrid.appendChild(panel);
 }
@@ -1517,7 +1567,7 @@ for (let i = 0; i < 4; i++) {
 {
   const { panel } = makePanel('Macros');
   panel.style.minWidth = '0';
-  panel.style.minHeight = '190px';
+  panel.style.minHeight = '195px';
 
   const macrosGrid = document.createElement('div');
   macrosGrid.style.display = 'grid';
@@ -1541,7 +1591,7 @@ for (let i = 0; i < 4; i++) {
     knobRow.style.gap = '4px';
     knobRow.style.alignItems = 'center';
 
-    knobRow.appendChild(buildKnob(`macro${i}`, 26));
+    knobRow.appendChild(buildKnob(`macro${i}`, 45));
     knobRow.appendChild(buildCCInput(`macro${i}_cc`));
 
     macroCell.appendChild(knobLabel);
