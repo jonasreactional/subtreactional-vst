@@ -1326,12 +1326,17 @@ leftCol.appendChild(envRow);
   const { panel } = makePanel('Filter Env');
   panel.style.minWidth = '210px';
   panel.style.minHeight = '120px';
-  panel.appendChild(makeKnobsRow(
+
+  const contentWrapper = document.createElement('div');
+  contentWrapper.className = 'panel-content-wrapper';
+  contentWrapper.appendChild(makeKnobsRow(
     buildKnob('fenv_attack', 40),
     buildKnob('fenv_decay', 40),
     buildKnob('fenv_sustain', 40),
     buildKnob('fenv_release', 40),
   ));
+  panel.appendChild(contentWrapper);
+
   envRow.appendChild(panel);
 }
 
@@ -1339,12 +1344,17 @@ leftCol.appendChild(envRow);
 {
   const { panel } = makePanel('Amp Env');
   panel.style.minWidth = '210px';
-  panel.appendChild(makeKnobsRow(
+
+  const contentWrapper = document.createElement('div');
+  contentWrapper.className = 'panel-content-wrapper';
+  contentWrapper.appendChild(makeKnobsRow(
     buildKnob('aenv_attack', 40),
     buildKnob('aenv_decay', 40),
     buildKnob('aenv_sustain', 40),
     buildKnob('aenv_release', 40),
   ));
+  panel.appendChild(contentWrapper);
+
   envRow.appendChild(panel);
 }
 
