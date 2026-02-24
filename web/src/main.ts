@@ -1820,6 +1820,7 @@ function addModDepthKnob(containerEl: HTMLElement, paramId: string, entry: ModDe
   mini.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     e.stopPropagation();
+    hideTooltip();
     removeModDepthKnob(containerEl, paramId, entry);
   });
 
