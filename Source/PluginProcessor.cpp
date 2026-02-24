@@ -269,7 +269,7 @@ SubtreactionalAudioProcessor::createParameterLayout()
     for (int l = 0; l < 4; ++l)
     {
         juce::String lp = "lfo" + juce::String(l) + "_";
-        addSlider((lp + "rate").toRawUTF8(),  0.1f, 20.0f, 1.0f, 0.1f);
+        addSlider((lp + "rate").toRawUTF8(),  0.1f, 20.0f, 1.0f, 0.01f);
         addSlider((lp + "depth").toRawUTF8(), 0.0f, 1.0f,  0.0f, 0.001f);
         addCombo((lp  + "shape").toRawUTF8(), lfoShapes, 0);
     }
