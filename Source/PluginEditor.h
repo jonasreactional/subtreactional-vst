@@ -20,6 +20,10 @@ public:
     void paint   (juce::Graphics&) override {}
     void resized () override;
 
+    // Consume all key events so the host never intercepts typing in the WebView
+    bool keyPressed      (const juce::KeyPress&) override { return true; }
+    bool keyStateChanged (bool)                  override { return true; }
+
     // FileDragAndDropTarget
     bool isInterestedInFileDrag (const juce::StringArray& files) override;
     void filesDropped (const juce::StringArray& files, int x, int y) override;

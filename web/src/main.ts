@@ -261,6 +261,19 @@ style.textContent = `
     color: ${C.offWhite};
   }
 
+  .preset-arrow-btn {
+    background: transparent;
+    border: none;
+    color: ${C.white48};
+    font-size: 13px;
+    line-height: 1;
+    padding: 0 2px;
+    cursor: pointer;
+    transition: color 0.1s;
+    user-select: none;
+  }
+  .preset-arrow-btn:hover { color: ${C.offWhite}; }
+
   /* ─── Preset modal ────────────────────────────────────────── */
   .preset-modal-overlay {
     position: fixed;
@@ -1321,10 +1334,22 @@ headerTitle.textContent = 'Subtreactional';
 const presetSelector = document.createElement('div');
 presetSelector.className = 'preset-selector';
 
+const presetPrevBtn = document.createElement('button');
+presetPrevBtn.className = 'preset-arrow-btn';
+presetPrevBtn.textContent = '‹';
+presetPrevBtn.title = 'Previous preset';
+presetSelector.appendChild(presetPrevBtn);
+
 const presetNameBtn = document.createElement('button');
 presetNameBtn.className = 'preset-name-btn';
 presetNameBtn.textContent = 'Init';
 presetSelector.appendChild(presetNameBtn);
+
+const presetNextBtn = document.createElement('button');
+presetNextBtn.className = 'preset-arrow-btn';
+presetNextBtn.textContent = '›';
+presetNextBtn.title = 'Next preset';
+presetSelector.appendChild(presetNextBtn);
 
 const presetSaveBtn = document.createElement('button');
 presetSaveBtn.className = 'preset-save-btn';
@@ -2726,6 +2751,32 @@ function openSaveDialog() {
 
 presetNameBtn.addEventListener('click', openPresetModal);
 presetSaveBtn.addEventListener('click', openSaveDialog);
+
+function loadPresetByIndex(idx: number) {
+  const preset = allPresets[idx];
+  if (!preset) return;
+  if (preset.source === 'factory' && preset.idx !== undefined) {
+    sendLoadFactoryPreset(preset.idx);
+  } else if (preset.source === 'user' && preset.path) {
+    sendLoadUserPreset(preset.path);
+  }
+  currentPresetName = preset.name;
+  updatePresetNameBtn();
+}
+
+presetPrevBtn.addEventListener('click', () => {
+  if (allPresets.length === 0) return;
+  const cur = allPresets.findIndex((p) => p.name === currentPresetName);
+  const next = cur <= 0 ? allPresets.length - 1 : cur - 1;
+  loadPresetByIndex(next);
+});
+
+presetNextBtn.addEventListener('click', () => {
+  if (allPresets.length === 0) return;
+  const cur = allPresets.findIndex((p) => p.name === currentPresetName);
+  const next = cur < 0 || cur === allPresets.length - 1 ? 0 : cur + 1;
+  loadPresetByIndex(next);
+});
 
 // Update preset name display when a patch is loaded externally (drag-drop, DAW recall)
 onPresets((presets) => {
