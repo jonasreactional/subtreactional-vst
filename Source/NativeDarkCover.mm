@@ -7,7 +7,7 @@
 
 NativeDarkCover::NativeDarkCover()
 {
-    NSView* view = [[NSView alloc] initWithFrame: NSMakeRect (0, 0, 1200, 700)];
+    NSView* view = [[NSView alloc] initWithFrame: NSMakeRect (0, 0, 1000, 530)];
     view.wantsLayer = YES;
     view.layer.backgroundColor = CGColorCreateSRGB (18.0 / 255.0, 18.0 / 255.0, 18.0 / 255.0, 1.0);
     nativeView = (__bridge_retained void*) view;

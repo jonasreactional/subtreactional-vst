@@ -173,8 +173,8 @@ style.textContent = `
     font-family: 'Inter', system-ui, sans-serif;
     font-size: 12px;
     overflow: hidden;
-    width: 1200px;
-    height: 700px;
+    width: 1000px;
+    height: 530px;
     user-select: none;
     -webkit-user-select: none;
   }
@@ -725,6 +725,9 @@ style.textContent = `
     align-items: center;
     gap: 4px;
     min-height: 60px;
+    border: 1px solid ${C.offDark3};
+    background: linear-gradient(-10deg, ${C.offDark3}, ${C.offDark2});
+    border-radius: 10px;
   }
 
   .fx-slot-label {
@@ -813,7 +816,7 @@ style.textContent = `
   }
 
   .analyzer-canvas-wrap {
-    width: 100%;
+    width: 100px;
     height: 82px;
     flex: 0 0 auto;
     border: 1px solid ${C.offDark3};
