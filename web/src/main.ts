@@ -983,17 +983,9 @@ style.textContent = `
     border-radius: 50%;
   }
 
-  /* ─── Custom tooltips ────────────────────────────────────────── */
-  [data-tooltip] {
-    position: relative;
-  }
-
-  [data-tooltip]::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
+  /* ─── Custom tooltips (fixed positioning) ────────────────────────────────────────── */
+  .tooltip-portal {
+    position: fixed;
     background: ${C.offDark3};
     color: ${C.offWhite};
     padding: 4px 8px;
@@ -1001,20 +993,84 @@ style.textContent = `
     font-size: 10px;
     white-space: nowrap;
     pointer-events: none;
+    z-index: 10001;
+    border: 1px solid ${C.offDark4};
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s, visibility 0.2s;
-    z-index: 10000;
-    border: 1px solid ${C.offDark4};
-    margin-bottom: 4px;
   }
 
-  [data-tooltip]:hover::after {
+  .tooltip-portal.visible {
     opacity: 1;
     visibility: visible;
   }
 `;
 document.head.appendChild(style);
+
+// ---------------------------------------------------------------------------
+// Tooltip system (fixed positioning portal)
+// ---------------------------------------------------------------------------
+
+const tooltipPortal = document.createElement('div');
+tooltipPortal.className = 'tooltip-portal';
+document.body.appendChild(tooltipPortal);
+
+let tooltipTimeout: ReturnType<typeof setTimeout> | null = null;
+let activeTooltipElement: HTMLElement | null = null;
+
+function positionTooltip(el: HTMLElement) {
+  const rect = el.getBoundingClientRect();
+  const text = el.getAttribute('data-tooltip') || '';
+
+  tooltipPortal.textContent = text;
+
+  // Position above the element, centered
+  const tooltipRect = tooltipPortal.getBoundingClientRect();
+  const left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+  const top = rect.top - tooltipRect.height - 4;
+
+  tooltipPortal.style.left = `${Math.max(0, left)}px`;
+  tooltipPortal.style.top = `${Math.max(0, top)}px`;
+}
+
+function showTooltip(el: HTMLElement) {
+  if (tooltipTimeout) clearTimeout(tooltipTimeout);
+  activeTooltipElement = el;
+
+  tooltipTimeout = setTimeout(() => {
+    if (activeTooltipElement === el) {
+      positionTooltip(el);
+      tooltipPortal.classList.add('visible');
+    }
+  }, 300); // 300ms delay before showing
+}
+
+function hideTooltip() {
+  if (tooltipTimeout) clearTimeout(tooltipTimeout);
+  tooltipPortal.classList.remove('visible');
+  activeTooltipElement = null;
+}
+
+// Attach listeners to all [data-tooltip] elements
+document.addEventListener('mouseover', (e) => {
+  const el = (e.target as HTMLElement).closest('[data-tooltip]');
+  if (el && el.getAttribute('data-tooltip')) {
+    showTooltip(el as HTMLElement);
+  }
+});
+
+document.addEventListener('mouseout', (e) => {
+  const el = (e.target as HTMLElement).closest('[data-tooltip]');
+  if (el) {
+    hideTooltip();
+  }
+});
+
+document.addEventListener('mousemove', () => {
+  if (activeTooltipElement && tooltipPortal.classList.contains('visible')) {
+    positionTooltip(activeTooltipElement);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // SVG Knob component
