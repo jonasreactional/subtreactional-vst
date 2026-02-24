@@ -17,24 +17,29 @@ interface ParamDef {
 
 const OSC_TYPES = ['Off', 'Saw', 'Square', 'Sine', 'Tri', 'Noise'];
 const FILTER_TYPES = ['Off', 'LP', 'HP', 'BP'];
-const FX_TYPES = ['Off', 'Delay', 'Chorus', 'Reverb', 'Distortion'];
+const FX_TYPES = ['Off', 'Delay', 'Chorus', 'Flanger', 'Phaser', 'VHS', 'Reverb', 'Distortion'];
+const PLAY_MODES = ['Poly', 'Mono', 'Legato'];
 const LFO_SHAPES = ['Sine', 'Tri', 'Saw', 'Square'];
 const LFO_DESTS = ['Off', 'Pitch', 'Cutoff', 'Amp', 'PWM'];
 const VOICE_COUNTS = Array.from({ length: 16 }, (_, i) => String(i + 1)); // '1' to '16'
 
 const PARAMS: ParamDef[] = [
   // OSC 1
-  { id: 'osc1_type',         label: 'OSC1 Type',  min: 0, max: 5, defaultValue: 1, type: 'combo', options: OSC_TYPES },
-  { id: 'osc1_level',        label: 'Level',      min: 0, max: 1, defaultValue: 0.7, type: 'slider' },
-  { id: 'osc1_detune',       label: 'Detune',     min: -50, max: 50, defaultValue: 0, type: 'slider' },
-  { id: 'osc1_octave',       label: 'Octave',     min: -2, max: 2, defaultValue: 0, step: 1, type: 'slider' },
-  { id: 'osc1_pulse_width',  label: 'Pulse',      min: 0, max: 1, defaultValue: 0.5, type: 'slider' },
+  { id: 'osc1_type',         label: 'OSC1 Type',  min: 0, max: 5,   defaultValue: 1,   type: 'combo', options: OSC_TYPES },
+  { id: 'osc1_level',        label: 'Level',      min: 0, max: 1,   defaultValue: 0.7, type: 'slider' },
+  { id: 'osc1_detune',       label: 'Detune',     min: -50, max: 50, defaultValue: 0,  type: 'slider' },
+  { id: 'osc1_octave',       label: 'Octave',     min: -2, max: 2,  defaultValue: 0,   step: 1, type: 'slider' },
+  { id: 'osc1_pulse_width',  label: 'Pulse',      min: 0, max: 1,   defaultValue: 0.5, type: 'slider' },
+  { id: 'osc1_pan',          label: 'Pan',        min: -1, max: 1,  defaultValue: 0,   type: 'slider' },
+  { id: 'osc1_pan_spread',   label: 'Spread',     min: 0, max: 1,   defaultValue: 1,   type: 'slider' },
   // OSC 2
-  { id: 'osc2_type',         label: 'OSC2 Type',  min: 0, max: 5, defaultValue: 0, type: 'combo', options: OSC_TYPES },
-  { id: 'osc2_level',        label: 'Level',      min: 0, max: 1, defaultValue: 0, type: 'slider' },
-  { id: 'osc2_detune',       label: 'Detune',     min: -50, max: 50, defaultValue: 0, type: 'slider' },
-  { id: 'osc2_octave',       label: 'Octave',     min: -2, max: 2, defaultValue: 0, step: 1, type: 'slider' },
-  { id: 'osc2_pulse_width',  label: 'Pulse',      min: 0, max: 1, defaultValue: 0.5, type: 'slider' },
+  { id: 'osc2_type',         label: 'OSC2 Type',  min: 0, max: 5,   defaultValue: 0,   type: 'combo', options: OSC_TYPES },
+  { id: 'osc2_level',        label: 'Level',      min: 0, max: 1,   defaultValue: 0,   type: 'slider' },
+  { id: 'osc2_detune',       label: 'Detune',     min: -50, max: 50, defaultValue: 0,  type: 'slider' },
+  { id: 'osc2_octave',       label: 'Octave',     min: -2, max: 2,  defaultValue: 0,   step: 1, type: 'slider' },
+  { id: 'osc2_pulse_width',  label: 'Pulse',      min: 0, max: 1,   defaultValue: 0.5, type: 'slider' },
+  { id: 'osc2_pan',          label: 'Pan',        min: -1, max: 1,  defaultValue: 0,   type: 'slider' },
+  { id: 'osc2_pan_spread',   label: 'Spread',     min: 0, max: 1,   defaultValue: 1,   type: 'slider' },
   // Sub Oscillator
   { id: 'sub_level',         label: 'Sub',        min: 0, max: 1, defaultValue: 0, type: 'slider' },
   // Filter
@@ -55,23 +60,33 @@ const PARAMS: ParamDef[] = [
   { id: 'aenv_decay',   label: 'Dec', min: 1, max: 5000, defaultValue: 200, type: 'slider' },
   { id: 'aenv_sustain', label: 'Sus', min: 0, max: 1,    defaultValue: 0.7, type: 'slider' },
   { id: 'aenv_release', label: 'Rel', min: 1, max: 5000, defaultValue: 500, type: 'slider' },
-  // FX slots
+  // FX slots — types: 0=Off,1=Delay,2=Chorus,3=Flanger,4=Phaser,5=VHS,6=Reverb,7=Distortion
   ...([0, 1, 2, 3] as const).flatMap((i) => [
-    { id: `fx${i}_type`,            label: `FX${i} Type`,  min: 0, max: 4,    defaultValue: 0,   type: 'combo' as const, options: FX_TYPES },
-    { id: `fx${i}_mix`,             label: 'Mix',          min: 0, max: 1,    defaultValue: 0.3, type: 'slider' as const },
-    { id: `fx${i}_delay_time`,      label: 'Dly Time',     min: 10, max: 1000, defaultValue: 250, type: 'slider' as const },
-    { id: `fx${i}_delay_feedback`,  label: 'Dly Fb',       min: 0, max: 0.99, defaultValue: 0.3, type: 'slider' as const },
-    { id: `fx${i}_chorus_rate`,     label: 'Chr Rate',     min: 0.1, max: 10, defaultValue: 0.5, type: 'slider' as const },
-    { id: `fx${i}_chorus_depth`,    label: 'Chr Depth',    min: 0, max: 1,    defaultValue: 0.4, type: 'slider' as const },
-    { id: `fx${i}_reverb_t60`,      label: 'Rvb T60',      min: 0.1, max: 10, defaultValue: 2.0, type: 'slider' as const },
-    { id: `fx${i}_distortion_drive`, label: 'Dist',        min: 0, max: 10,   defaultValue: 1.0, type: 'slider' as const },
+    { id: `fx${i}_type`,             label: `FX${i} Type`,    min: 0, max: 7,    defaultValue: 0,    type: 'combo' as const, options: FX_TYPES },
+    { id: `fx${i}_mix`,              label: 'Mix',             min: 0, max: 1,    defaultValue: 0.3,  type: 'slider' as const },
+    { id: `fx${i}_delay_time`,       label: 'Dly Time',        min: 10, max: 1000, defaultValue: 250, type: 'slider' as const },
+    { id: `fx${i}_delay_feedback`,   label: 'Dly Fb',          min: 0, max: 0.99, defaultValue: 0.3,  type: 'slider' as const },
+    { id: `fx${i}_chorus_rate`,      label: 'Rate',            min: 0.1, max: 10, defaultValue: 0.5,  type: 'slider' as const },
+    { id: `fx${i}_chorus_depth`,     label: 'Depth',           min: 0, max: 1,    defaultValue: 0.4,  type: 'slider' as const },
+    { id: `fx${i}_reverb_t60`,       label: 'Rvb T60',         min: 0.1, max: 10, defaultValue: 2.0,  type: 'slider' as const },
+    { id: `fx${i}_distortion_drive`, label: 'Drive',           min: 0, max: 10,   defaultValue: 1.0,  type: 'slider' as const },
+    { id: `fx${i}_vhs_wow_rate`,     label: 'Wow Rate',        min: 0.1, max: 5,  defaultValue: 0.35, type: 'slider' as const },
+    { id: `fx${i}_vhs_wow_depth`,    label: 'Wow Depth',       min: 0, max: 1,    defaultValue: 0.25, type: 'slider' as const },
+    { id: `fx${i}_vhs_flutter_rate`, label: 'Flutter Rate',    min: 1, max: 20,   defaultValue: 6.0,  type: 'slider' as const },
+    { id: `fx${i}_vhs_flutter_depth`,label: 'Flutter Depth',   min: 0, max: 1,    defaultValue: 0.15, type: 'slider' as const },
+    { id: `fx${i}_vhs_drive`,        label: 'Drive',           min: 0, max: 1,    defaultValue: 0.25, type: 'slider' as const },
+    { id: `fx${i}_vhs_tone`,         label: 'Tone',            min: 0, max: 1,    defaultValue: 0.35, type: 'slider' as const },
+    { id: `fx${i}_vhs_noise`,        label: 'Noise',           min: 0, max: 1,    defaultValue: 0.1,  type: 'slider' as const },
+    { id: `fx${i}_vhs_dropout`,      label: 'Dropout',         min: 0, max: 1,    defaultValue: 0.05, type: 'slider' as const },
   ]),
   // Master
-  { id: 'master_volume',       label: 'Master', min: 0, max: 1, defaultValue: 0.8, type: 'slider' },
-  { id: 'pitch_bend_range',    label: 'Pitch Bend', min: 0, max: 24, defaultValue: 2, step: 1, type: 'slider' },
-  { id: 'portamento_time',     label: 'Portamento', min: 0, max: 1000, defaultValue: 0, type: 'slider' },
+  { id: 'master_volume',    label: 'Master',     min: 0, max: 1,    defaultValue: 0.8, type: 'slider' },
+  { id: 'pitch_bend_range', label: 'Pitch Bend', min: 0, max: 24,   defaultValue: 2,   step: 1, type: 'slider' },
+  { id: 'portamento_time',  label: 'Portamento', min: 0, max: 1000, defaultValue: 0,   type: 'slider' },
+  { id: 'pan_spread',       label: 'Pan Spread', min: 0, max: 1,    defaultValue: 1,   type: 'slider' },
+  { id: 'play_mode',        label: 'Mode',       min: 0, max: 2,    defaultValue: 0,   type: 'combo', options: PLAY_MODES },
   // Voice count
-  { id: 'num_voices', label: 'Voices', min: 1, max: 16, defaultValue: 8, step: 1, type: 'slider' },
+  { id: 'num_voices', label: 'Voices', min: 0, max: 15, defaultValue: 7, type: 'combo', options: VOICE_COUNTS },
   // LFO
   { id: 'lfo_rate',  label: 'Rate', min: 0.1, max: 20, defaultValue: 1, type: 'slider' },
   { id: 'lfo_depth', label: 'Depth', min: 0, max: 1, defaultValue: 0, type: 'slider' },
@@ -120,8 +135,8 @@ style.textContent = `
     font-family: 'Inter', system-ui, sans-serif;
     font-size: 12px;
     overflow: hidden;
-    width: 860px;
-    height: 480px;
+    width: 1200px;
+    height: 700px;
     user-select: none;
     -webkit-user-select: none;
   }
@@ -129,8 +144,8 @@ style.textContent = `
   #app {
     display: flex;
     flex-direction: column;
-    width: 860px;
-    height: 480px;
+    width: 1200px;
+    height: 700px;
     overflow: hidden;
   }
 
@@ -1142,6 +1157,10 @@ leftCol.appendChild(topRow);
     buildKnob('osc1_octave', 40),
     buildKnob('osc1_pulse_width', 40),
   ));
+  panel.appendChild(makeKnobsRow(
+    buildKnob('osc1_pan', 40),
+    buildKnob('osc1_pan_spread', 40),
+  ));
   topRow.appendChild(panel);
 }
 
@@ -1155,6 +1174,10 @@ leftCol.appendChild(topRow);
     buildKnob('osc2_detune', 40),
     buildKnob('osc2_octave', 40),
     buildKnob('osc2_pulse_width', 40),
+  ));
+  panel.appendChild(makeKnobsRow(
+    buildKnob('osc2_pan', 40),
+    buildKnob('osc2_pan_spread', 40),
   ));
   topRow.appendChild(panel);
 }
@@ -1223,11 +1246,12 @@ leftCol.appendChild(envRow);
   const { panel } = makePanel('LFO');
   panel.style.minWidth = '100px';
   panel.appendChild(makeKnobsRow(
-    buildKnob('lfo_rate', 30),
-    buildKnob('lfo_depth', 30),
-  
-    buildDropdown('lfo_shape', 40),
-    buildDropdown('lfo_dest', 50),
+    buildKnob('lfo_rate', 34),
+    buildKnob('lfo_depth', 34),
+  ));
+  panel.appendChild(makeKnobsRow(
+    buildDropdown('lfo_shape', 70),
+    buildDropdown('lfo_dest', 70),
   ));
   envRow.appendChild(panel);
 }
@@ -1283,6 +1307,30 @@ envRow.appendChild(makeAnalyzerPanel());
     chorusGroup.appendChild(buildKnob(`fx${i}_chorus_rate`, 30));
     chorusGroup.appendChild(buildKnob(`fx${i}_chorus_depth`, 30));
 
+    // Flanger and Phaser share chorus_rate/depth + delay_feedback for feedback
+    const flangerGroup = document.createElement('div');
+    flangerGroup.className = 'fx-param-group';
+    flangerGroup.appendChild(buildKnob(`fx${i}_chorus_rate`, 30));
+    flangerGroup.appendChild(buildKnob(`fx${i}_chorus_depth`, 30));
+    flangerGroup.appendChild(buildKnob(`fx${i}_delay_feedback`, 30));
+
+    const phaserGroup = document.createElement('div');
+    phaserGroup.className = 'fx-param-group';
+    phaserGroup.appendChild(buildKnob(`fx${i}_chorus_rate`, 30));
+    phaserGroup.appendChild(buildKnob(`fx${i}_chorus_depth`, 30));
+    phaserGroup.appendChild(buildKnob(`fx${i}_delay_feedback`, 30));
+
+    const vhsGroup = document.createElement('div');
+    vhsGroup.className = 'fx-param-group';
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_wow_rate`, 30));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_wow_depth`, 30));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_flutter_rate`, 30));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_flutter_depth`, 30));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_drive`, 30));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_tone`, 30));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_noise`, 30));
+    vhsGroup.appendChild(buildKnob(`fx${i}_vhs_dropout`, 30));
+
     const reverbGroup = document.createElement('div');
     reverbGroup.className = 'fx-param-group';
     reverbGroup.appendChild(buildKnob(`fx${i}_reverb_t60`, 30));
@@ -1293,16 +1341,23 @@ envRow.appendChild(makeAnalyzerPanel());
 
     paramsWrap.appendChild(delayGroup);
     paramsWrap.appendChild(chorusGroup);
+    paramsWrap.appendChild(flangerGroup);
+    paramsWrap.appendChild(phaserGroup);
+    paramsWrap.appendChild(vhsGroup);
     paramsWrap.appendChild(reverbGroup);
     paramsWrap.appendChild(distortionGroup);
 
+    // Types: 0=Off,1=Delay,2=Chorus,3=Flanger,4=Phaser,5=VHS,6=Reverb,7=Distortion
     function updateFxVisibility(typeIndex: number) {
       const isOff = typeIndex === 0;
       mixKnob.style.display = isOff ? 'none' : '';
-      delayGroup.style.display = typeIndex === 1 ? 'flex' : 'none';
-      chorusGroup.style.display = typeIndex === 2 ? 'flex' : 'none';
-      reverbGroup.style.display = typeIndex === 3 ? 'flex' : 'none';
-      distortionGroup.style.display = typeIndex === 4 ? 'flex' : 'none';
+      delayGroup.style.display      = typeIndex === 1 ? 'flex' : 'none';
+      chorusGroup.style.display     = typeIndex === 2 ? 'flex' : 'none';
+      flangerGroup.style.display    = typeIndex === 3 ? 'flex' : 'none';
+      phaserGroup.style.display     = typeIndex === 4 ? 'flex' : 'none';
+      vhsGroup.style.display        = typeIndex === 5 ? 'flex' : 'none';
+      reverbGroup.style.display     = typeIndex === 6 ? 'flex' : 'none';
+      distortionGroup.style.display = typeIndex === 7 ? 'flex' : 'none';
     }
 
     updateFxVisibility(0);
@@ -1326,12 +1381,9 @@ envRow.appendChild(makeAnalyzerPanel());
 
   const fxSidePanel = document.createElement('div');
   fxSidePanel.className = 'panel fx-side-panel';
-  fxSidePanel.appendChild(buildKnob('num_voices', 38));
   fxSidePanel.appendChild(buildKnob('pitch_bend_range', 38));
-  const portamentoKnob = buildKnob('portamento_time', 38);
-  portamentoKnob.style.gridColumn = '1 / -1';
-  portamentoKnob.style.justifySelf = 'center';
-  fxSidePanel.appendChild(portamentoKnob);
+  fxSidePanel.appendChild(buildKnob('portamento_time', 38));
+  fxSidePanel.appendChild(buildKnob('pan_spread', 38));
   fxRowWrap.appendChild(fxSidePanel);
 
   leftCol.appendChild(fxRowWrap);
@@ -1360,6 +1412,11 @@ mainLayout.appendChild(rightCol);
   masterWrap.style.gap = '6px';
 
   masterWrap.appendChild(buildKnob('master_volume', 52));
+  masterWrap.appendChild(buildDropdown('num_voices', 64));
+  masterWrap.appendChild(buildDropdown('play_mode', 64));
+  masterWrap.appendChild(buildKnob('pitch_bend_range', 40));
+  masterWrap.appendChild(buildKnob('portamento_time', 40));
+  masterWrap.appendChild(buildKnob('pan_spread', 40));
 
   masterPanel.appendChild(masterWrap);
   rightCol.appendChild(masterPanel);

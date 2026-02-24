@@ -86,5 +86,8 @@ private:
     juce::AbstractFifo analyzerFifo { kAnalyzerFifoSize };
     std::array<float, kAnalyzerFifoSize> analyzerSampleBuffer {};
 
+    // Params with side-effects (panic, realloc) — only applied on change
+    float lastPlayMode_ = -1.0f;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SubtreactionalAudioProcessor)
 };

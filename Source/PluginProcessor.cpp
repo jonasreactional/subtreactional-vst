@@ -19,12 +19,16 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "osc1_detune",         "osc1.detune" },
     { "osc1_octave",         "osc1.octave" },
     { "osc1_pulse_width",    "osc1.pulse_width" },
+    { "osc1_pan",            "osc1.pan" },
+    { "osc1_pan_spread",     "osc1.pan_spread" },
     // OSC 2
     { "osc2_type",           "osc2.type" },
     { "osc2_level",          "osc2.level" },
     { "osc2_detune",         "osc2.detune" },
-    { "osc2_octave",         "osc2_octave" },
+    { "osc2_octave",         "osc2.octave" },
     { "osc2_pulse_width",    "osc2.pulse_width" },
+    { "osc2_pan",            "osc2.pan" },
+    { "osc2_pan_spread",     "osc2.pan_spread" },
     // Sub Oscillator
     { "sub_level",           "sub.level" },
     // Filter
@@ -46,42 +50,78 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "aenv_sustain",        "amp_env.sustain" },
     { "aenv_release",        "amp_env.release" },
     // FX 0
-    { "fx0_type",            "fx0.type" },
-    { "fx0_mix",             "fx0.mix" },
-    { "fx0_delay_time",      "fx0.delay_time" },
-    { "fx0_delay_feedback",  "fx0.delay_feedback" },
-    { "fx0_chorus_rate",     "fx0.chorus_rate" },
-    { "fx0_chorus_depth",    "fx0.chorus_depth" },
-    { "fx0_reverb_t60",      "fx0.reverb_t60" },
+    { "fx0_type",              "fx0.type" },
+    { "fx0_mix",               "fx0.mix" },
+    { "fx0_delay_time",        "fx0.delay_time" },
+    { "fx0_delay_feedback",    "fx0.delay_feedback" },
+    { "fx0_chorus_rate",       "fx0.chorus_rate" },
+    { "fx0_chorus_depth",      "fx0.chorus_depth" },
+    { "fx0_reverb_t60",        "fx0.reverb_t60" },
+    { "fx0_distortion_drive",  "fx0.distortion_drive" },
+    { "fx0_vhs_wow_rate",      "fx0.vhs_wow_rate" },
+    { "fx0_vhs_wow_depth",     "fx0.vhs_wow_depth" },
+    { "fx0_vhs_flutter_rate",  "fx0.vhs_flutter_rate" },
+    { "fx0_vhs_flutter_depth", "fx0.vhs_flutter_depth" },
+    { "fx0_vhs_drive",         "fx0.vhs_drive" },
+    { "fx0_vhs_tone",          "fx0.vhs_tone" },
+    { "fx0_vhs_noise",         "fx0.vhs_noise" },
+    { "fx0_vhs_dropout",       "fx0.vhs_dropout" },
     // FX 1
-    { "fx1_type",            "fx1.type" },
-    { "fx1_mix",             "fx1.mix" },
-    { "fx1_delay_time",      "fx1.delay_time" },
-    { "fx1_delay_feedback",  "fx1.delay_feedback" },
-    { "fx1_chorus_rate",     "fx1.chorus_rate" },
-    { "fx1_chorus_depth",    "fx1.chorus_depth" },
-    { "fx1_reverb_t60",      "fx1.reverb_t60" },
+    { "fx1_type",              "fx1.type" },
+    { "fx1_mix",               "fx1.mix" },
+    { "fx1_delay_time",        "fx1.delay_time" },
+    { "fx1_delay_feedback",    "fx1.delay_feedback" },
+    { "fx1_chorus_rate",       "fx1.chorus_rate" },
+    { "fx1_chorus_depth",      "fx1.chorus_depth" },
+    { "fx1_reverb_t60",        "fx1.reverb_t60" },
+    { "fx1_distortion_drive",  "fx1.distortion_drive" },
+    { "fx1_vhs_wow_rate",      "fx1.vhs_wow_rate" },
+    { "fx1_vhs_wow_depth",     "fx1.vhs_wow_depth" },
+    { "fx1_vhs_flutter_rate",  "fx1.vhs_flutter_rate" },
+    { "fx1_vhs_flutter_depth", "fx1.vhs_flutter_depth" },
+    { "fx1_vhs_drive",         "fx1.vhs_drive" },
+    { "fx1_vhs_tone",          "fx1.vhs_tone" },
+    { "fx1_vhs_noise",         "fx1.vhs_noise" },
+    { "fx1_vhs_dropout",       "fx1.vhs_dropout" },
     // FX 2
-    { "fx2_type",            "fx2.type" },
-    { "fx2_mix",             "fx2.mix" },
-    { "fx2_delay_time",      "fx2.delay_time" },
-    { "fx2_delay_feedback",  "fx2.delay_feedback" },
-    { "fx2_chorus_rate",     "fx2.chorus_rate" },
-    { "fx2_chorus_depth",    "fx2.chorus_depth" },
-    { "fx2_reverb_t60",      "fx2.reverb_t60" },
+    { "fx2_type",              "fx2.type" },
+    { "fx2_mix",               "fx2.mix" },
+    { "fx2_delay_time",        "fx2.delay_time" },
+    { "fx2_delay_feedback",    "fx2.delay_feedback" },
+    { "fx2_chorus_rate",       "fx2.chorus_rate" },
+    { "fx2_chorus_depth",      "fx2.chorus_depth" },
+    { "fx2_reverb_t60",        "fx2.reverb_t60" },
+    { "fx2_distortion_drive",  "fx2.distortion_drive" },
+    { "fx2_vhs_wow_rate",      "fx2.vhs_wow_rate" },
+    { "fx2_vhs_wow_depth",     "fx2.vhs_wow_depth" },
+    { "fx2_vhs_flutter_rate",  "fx2.vhs_flutter_rate" },
+    { "fx2_vhs_flutter_depth", "fx2.vhs_flutter_depth" },
+    { "fx2_vhs_drive",         "fx2.vhs_drive" },
+    { "fx2_vhs_tone",          "fx2.vhs_tone" },
+    { "fx2_vhs_noise",         "fx2.vhs_noise" },
+    { "fx2_vhs_dropout",       "fx2.vhs_dropout" },
     // FX 3
-    { "fx3_type",            "fx3.type" },
-    { "fx3_mix",             "fx3.mix" },
-    { "fx3_delay_time",      "fx3.delay_time" },
-    { "fx3_delay_feedback",  "fx3.delay_feedback" },
-    { "fx3_chorus_rate",     "fx3.chorus_rate" },
-    { "fx3_chorus_depth",    "fx3.chorus_depth" },
-    { "fx3_reverb_t60",      "fx3.reverb_t60" },
-    { "fx3_distortion_drive", "fx3.distortion_drive" },
+    { "fx3_type",              "fx3.type" },
+    { "fx3_mix",               "fx3.mix" },
+    { "fx3_delay_time",        "fx3.delay_time" },
+    { "fx3_delay_feedback",    "fx3.delay_feedback" },
+    { "fx3_chorus_rate",       "fx3.chorus_rate" },
+    { "fx3_chorus_depth",      "fx3.chorus_depth" },
+    { "fx3_reverb_t60",        "fx3.reverb_t60" },
+    { "fx3_distortion_drive",  "fx3.distortion_drive" },
+    { "fx3_vhs_wow_rate",      "fx3.vhs_wow_rate" },
+    { "fx3_vhs_wow_depth",     "fx3.vhs_wow_depth" },
+    { "fx3_vhs_flutter_rate",  "fx3.vhs_flutter_rate" },
+    { "fx3_vhs_flutter_depth", "fx3.vhs_flutter_depth" },
+    { "fx3_vhs_drive",         "fx3.vhs_drive" },
+    { "fx3_vhs_tone",          "fx3.vhs_tone" },
+    { "fx3_vhs_noise",         "fx3.vhs_noise" },
+    { "fx3_vhs_dropout",       "fx3.vhs_dropout" },
     // Master
     { "master_volume",       "master_volume" },
     { "pitch_bend_range",    "pitch_bend_range" },
     { "portamento_time",     "portamento_time" },
+    { "pan_spread",          "pan_spread" },
     // Voice count
     { "num_voices",          "num_voices" },
     // LFO
@@ -118,18 +158,22 @@ SubtreactionalAudioProcessor::createParameterLayout()
     };
 
     // OSC 1  (default: saw, full level)
-    addCombo ("osc1_type",   {"Off","Saw","Square","Sine","Tri","Noise"}, 1);
-    addSlider("osc1_level",  0.0f, 1.0f, 0.7f, 0.001f);
-    addSlider("osc1_detune", -50.0f, 50.0f, 0.0f, 0.1f);
-    addSlider("osc1_octave", -2.0f, 2.0f, 0.0f, 1.0f);
-    addSlider("osc1_pulse_width", 0.0f, 1.0f, 0.5f, 0.001f);
+    addCombo ("osc1_type",       {"Off","Saw","Square","Sine","Tri","Noise"}, 1);
+    addSlider("osc1_level",      0.0f, 1.0f,   0.7f, 0.001f);
+    addSlider("osc1_detune",   -50.0f, 50.0f,  0.0f, 0.1f);
+    addSlider("osc1_octave",    -2.0f, 2.0f,   0.0f, 1.0f);
+    addSlider("osc1_pulse_width", 0.0f, 1.0f,  0.5f, 0.001f);
+    addSlider("osc1_pan",       -1.0f, 1.0f,   0.0f, 0.001f);
+    addSlider("osc1_pan_spread", 0.0f, 1.0f,   1.0f, 0.001f);
 
     // OSC 2  (default: off)
-    addCombo ("osc2_type",   {"Off","Saw","Square","Sine","Tri","Noise"}, 0);
-    addSlider("osc2_level",  0.0f, 1.0f, 0.0f, 0.001f);
-    addSlider("osc2_detune", -50.0f, 50.0f, 0.0f, 0.1f);
-    addSlider("osc2_octave", -2.0f, 2.0f, 0.0f, 1.0f);
-    addSlider("osc2_pulse_width", 0.0f, 1.0f, 0.5f, 0.001f);
+    addCombo ("osc2_type",       {"Off","Saw","Square","Sine","Tri","Noise"}, 0);
+    addSlider("osc2_level",      0.0f, 1.0f,   0.0f, 0.001f);
+    addSlider("osc2_detune",   -50.0f, 50.0f,  0.0f, 0.1f);
+    addSlider("osc2_octave",    -2.0f, 2.0f,   0.0f, 1.0f);
+    addSlider("osc2_pulse_width", 0.0f, 1.0f,  0.5f, 0.001f);
+    addSlider("osc2_pan",       -1.0f, 1.0f,   0.0f, 0.001f);
+    addSlider("osc2_pan_spread", 0.0f, 1.0f,   1.0f, 0.001f);
 
     // Sub Oscillator
     addSlider("sub_level", 0.0f, 1.0f, 0.0f, 0.001f);
@@ -157,18 +201,27 @@ SubtreactionalAudioProcessor::createParameterLayout()
     addSlider("aenv_release", 1.0f, 5000.0f, 500.0f, 0.0f, 0.25f);
 
     // FX slots 0..3
-    const juce::StringArray fxTypes { "Off","Delay","Chorus","Reverb","Distortion" };
+    // Types: 0=Off,1=Delay,2=Chorus,3=Flanger,4=Phaser,5=VHS,6=Reverb,7=Distortion
+    const juce::StringArray fxTypes { "Off","Delay","Chorus","Flanger","Phaser","VHS","Reverb","Distortion" };
     for (int i = 0; i < 4; ++i)
     {
         juce::String fx = "fx" + juce::String(i) + "_";
-        addCombo ((fx + "type").toRawUTF8(),           fxTypes, 0);
-        addSlider((fx + "mix").toRawUTF8(),            0.0f,  1.0f,    0.3f, 0.001f);
-        addSlider((fx + "delay_time").toRawUTF8(),    10.0f, 1000.0f, 250.0f, 0.1f);
-        addSlider((fx + "delay_feedback").toRawUTF8(), 0.0f,  0.99f,  0.3f, 0.001f);
-        addSlider((fx + "chorus_rate").toRawUTF8(),    0.1f, 10.0f,   0.5f, 0.01f);
-        addSlider((fx + "chorus_depth").toRawUTF8(),   0.0f,  1.0f,   0.4f, 0.001f);
-        addSlider((fx + "reverb_t60").toRawUTF8(),     0.1f, 10.0f,   2.0f, 0.01f);
-        addSlider((fx + "distortion_drive").toRawUTF8(), 0.0f, 10.0f, 1.0f, 0.01f);
+        addCombo ((fx + "type").toRawUTF8(),              fxTypes, 0);
+        addSlider((fx + "mix").toRawUTF8(),               0.0f,   1.0f,    0.3f,  0.001f);
+        addSlider((fx + "delay_time").toRawUTF8(),       10.0f, 1000.0f,  250.0f, 0.1f);
+        addSlider((fx + "delay_feedback").toRawUTF8(),    0.0f,   0.99f,   0.3f,  0.001f);
+        addSlider((fx + "chorus_rate").toRawUTF8(),       0.1f,  10.0f,   0.5f,  0.01f);
+        addSlider((fx + "chorus_depth").toRawUTF8(),      0.0f,   1.0f,   0.4f,  0.001f);
+        addSlider((fx + "reverb_t60").toRawUTF8(),        0.1f,  10.0f,   2.0f,  0.01f);
+        addSlider((fx + "distortion_drive").toRawUTF8(),  0.0f,  10.0f,   1.0f,  0.01f);
+        addSlider((fx + "vhs_wow_rate").toRawUTF8(),      0.1f,   5.0f,   0.35f, 0.01f);
+        addSlider((fx + "vhs_wow_depth").toRawUTF8(),     0.0f,   1.0f,   0.25f, 0.001f);
+        addSlider((fx + "vhs_flutter_rate").toRawUTF8(),  1.0f,  20.0f,   6.0f,  0.1f);
+        addSlider((fx + "vhs_flutter_depth").toRawUTF8(), 0.0f,   1.0f,   0.15f, 0.001f);
+        addSlider((fx + "vhs_drive").toRawUTF8(),         0.0f,   1.0f,   0.25f, 0.001f);
+        addSlider((fx + "vhs_tone").toRawUTF8(),          0.0f,   1.0f,   0.35f, 0.001f);
+        addSlider((fx + "vhs_noise").toRawUTF8(),         0.0f,   1.0f,   0.1f,  0.001f);
+        addSlider((fx + "vhs_dropout").toRawUTF8(),       0.0f,   1.0f,   0.05f, 0.001f);
     }
 
     // Master volume
@@ -179,6 +232,12 @@ SubtreactionalAudioProcessor::createParameterLayout()
 
     // Portamento time (ms: 0-1000, default 0)
     addSlider("portamento_time", 0.0f, 1000.0f, 0.0f, 1.0f);
+
+    // Global pan spread (0=mono, 1=full stereo, default 1.0 for audible stereo)
+    addSlider("pan_spread", 0.0f, 1.0f, 1.0f, 0.001f);
+
+    // Play mode (Poly=0, Mono=1, Legato=2)
+    addCombo("play_mode", {"Poly","Mono","Legato"}, 0);
 
     // Voice count (1-16, default 8)
     juce::StringArray voiceChoices;
@@ -247,6 +306,10 @@ void SubtreactionalAudioProcessor::prepareToPlay (double sampleRate, int samples
 
     synthInitialised = true;
     syncAllParamsToSynth();
+
+    // Apply play_mode once (has side-effect: st_synth_panic — don't run every block)
+    lastPlayMode_ = apvts.getRawParameterValue ("play_mode")->load();
+    st_synth_set_param_float (&synth, "play_mode", lastPlayMode_);
 }
 
 void SubtreactionalAudioProcessor::releaseResources()
@@ -282,6 +345,16 @@ void SubtreactionalAudioProcessor::processBlock (juce::AudioBuffer<float>& buffe
     {
         float val = apvts.getRawParameterValue (kParams[i].apvtsId)->load();
         st_synth_set_param_float (&synth, kParams[i].synthName, val);
+    }
+
+    // play_mode calls st_synth_panic() on every set — only apply on change.
+    {
+        float pm = apvts.getRawParameterValue ("play_mode")->load();
+        if (pm != lastPlayMode_)
+        {
+            lastPlayMode_ = pm;
+            st_synth_set_param_float (&synth, "play_mode", pm);
+        }
     }
 
     // Handle MIDI events

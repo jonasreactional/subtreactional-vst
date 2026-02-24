@@ -16,7 +16,7 @@ SubtreactionalAudioProcessorEditor::SubtreactionalAudioProcessorEditor (
 
     startTimerHz (30);
 
-    setSize (860, 480);
+    setSize (1200, 700);
 }
 
 SubtreactionalAudioProcessorEditor::~SubtreactionalAudioProcessorEditor()
