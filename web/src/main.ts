@@ -982,6 +982,37 @@ style.textContent = `
     outline-offset: 2px;
     border-radius: 50%;
   }
+
+  /* ─── Custom tooltips ────────────────────────────────────────── */
+  [data-tooltip] {
+    position: relative;
+  }
+
+  [data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: ${C.offDark3};
+    color: ${C.offWhite};
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    z-index: 10000;
+    border: 1px solid ${C.offDark4};
+    margin-bottom: 4px;
+  }
+
+  [data-tooltip]:hover::after {
+    opacity: 1;
+    visibility: visible;
+  }
 `;
 document.head.appendChild(style);
 
@@ -1407,7 +1438,7 @@ presetSelector.className = 'preset-selector';
 const presetPrevBtn = document.createElement('button');
 presetPrevBtn.className = 'preset-arrow-btn';
 presetPrevBtn.textContent = '‹';
-presetPrevBtn.title = 'Previous preset';
+presetPrevBtn.setAttribute('data-tooltip', 'Previous preset');
 presetSelector.appendChild(presetPrevBtn);
 
 const presetNameBtn = document.createElement('button');
@@ -1418,7 +1449,7 @@ presetSelector.appendChild(presetNameBtn);
 const presetNextBtn = document.createElement('button');
 presetNextBtn.className = 'preset-arrow-btn';
 presetNextBtn.textContent = '›';
-presetNextBtn.title = 'Next preset';
+presetNextBtn.setAttribute('data-tooltip', 'Next preset');
 presetSelector.appendChild(presetNextBtn);
 
 const presetSaveBtn = document.createElement('button');
@@ -1637,7 +1668,7 @@ function addModDepthKnob(containerEl: HTMLElement, paramId: string, entry: ModDe
 
   function updateArc(depth: number) {
     const absD = Math.abs(depth);
-    mini.title = `${entry.type.toUpperCase()} ${entry.idx + 1} depth: ${depth >= 0 ? '+' : ''}${depth.toFixed(2)}\nDrag to adjust · Right-click to remove`;
+    mini.setAttribute('data-tooltip', `${entry.type.toUpperCase()} ${entry.idx + 1} depth: ${depth >= 0 ? '+' : ''}${depth.toFixed(2)} · Drag to adjust · Right-click to remove`);
     if (absD < 0.01) {
       arcSlice.setAttribute('d', '');
       arcSlice.setAttribute('opacity', '1');
@@ -1960,7 +1991,7 @@ function buildWaveformSelector(lfoIdx: number): HTMLElement {
     const btn = document.createElement('button');
     btn.className = 'wave-btn' + (idx === 0 ? ' active' : '');
     btn.style.setProperty('--lfo-color', color);
-    btn.title = shape;
+    btn.setAttribute('data-tooltip', shape);
 
     const svgNS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(svgNS, 'svg');
@@ -2518,7 +2549,7 @@ for (let i = 0; i < 4; i++) {
   dragHandle.style.background = lfoColor;
   dragHandle.style.setProperty('--lfo-color', lfoColor);
   dragHandle.draggable = true;
-  dragHandle.title = `Drag LFO ${i + 1} onto a knob to modulate it`;
+  dragHandle.setAttribute('data-tooltip', `Drag LFO ${i + 1} onto a knob to modulate it`);
 
   dragHandle.addEventListener('dragstart', (e) => {
     activeDrag = { type: 'lfo', idx: i, color: lfoColor };
@@ -2574,7 +2605,7 @@ for (let i = 0; i < 4; i++) {
     macroDragHandle.style.background = macroColor;
     macroDragHandle.style.setProperty('--lfo-color', macroColor);
     macroDragHandle.draggable = true;
-    macroDragHandle.title = `Drag Macro ${i + 1} onto a knob to modulate it`;
+    macroDragHandle.setAttribute('data-tooltip', `Drag Macro ${i + 1} onto a knob to modulate it`);
 
     macroDragHandle.addEventListener('dragstart', (e) => {
       activeDrag = { type: 'macro', idx: i, color: macroColor };
