@@ -35,6 +35,33 @@ void SubtreactionalAudioProcessorEditor::resized()
 }
 
 //==============================================================================
+bool SubtreactionalAudioProcessorEditor::isInterestedInFileDrag (const juce::StringArray& files)
+{
+    for (const auto& f : files)
+        if (f.endsWithIgnoreCase (".json"))
+            return true;
+    return false;
+}
+
+void SubtreactionalAudioProcessorEditor::filesDropped (const juce::StringArray& files, int, int)
+{
+    for (const auto& path : files)
+    {
+        if (! path.endsWithIgnoreCase (".json"))
+            continue;
+
+        const juce::File file (path);
+        const juce::String json = file.loadFileAsString();
+        if (json.isEmpty())
+            continue;
+
+        const auto bytes = json.toUTF8();
+        processor.setStateInformation (bytes.getAddress(), (int) std::strlen (bytes.getAddress()));
+        break; // load the first valid JSON and stop
+    }
+}
+
+//==============================================================================
 void SubtreactionalAudioProcessorEditor::parameterChanged (
     const juce::String& parameterID, float /*newValue*/)
 {

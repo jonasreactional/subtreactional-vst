@@ -9,6 +9,7 @@
 //==============================================================================
 class SubtreactionalAudioProcessorEditor
     : public juce::AudioProcessorEditor,
+    public juce::FileDragAndDropTarget,
     private juce::AudioProcessorValueTreeState::Listener,
     private juce::Timer
 {
@@ -18,6 +19,10 @@ public:
 
     void paint   (juce::Graphics&) override {}
     void resized () override;
+
+    // FileDragAndDropTarget
+    bool isInterestedInFileDrag (const juce::StringArray& files) override;
+    void filesDropped (const juce::StringArray& files, int x, int y) override;
 
 private:
     SubtreactionalAudioProcessor& processor;

@@ -1,0 +1,39 @@
+{
+  "name": "String Pad",
+  "version": 1,
+  "polyphony": 12,
+  "play_mode": "poly",
+  "pan_spread": 1.0,
+  "master_volume": 0.75,
+  "portamento_time": 0.0,
+  "pitch_bend_range": 2.0,
+  "voice": {
+    "oscillators": [
+      { "type": "saw", "level": 0.6, "detune":  12.0, "octave": 0, "pulse_width": 0.5, "pan": 0.0, "pan_spread": 1.0 },
+      { "type": "saw", "level": 0.55, "detune": -6.0, "octave": 0, "pulse_width": 0.5, "pan": 0.0, "pan_spread": 1.0 }
+    ],
+    "sub_level": 0.0,
+    "ring_mod": 0.0,
+    "filter": { "type": "lp", "cutoff": 3000.0, "resonance": 0.15, "env_amount": 0.0, "vel_amount": 0.0 },
+    "filter_envelope": { "attack": 100.0, "decay": 200.0, "sustain": 1.0, "release": 500.0 },
+    "amp_envelope":    { "attack": 300.0, "decay": 200.0, "sustain": 0.9, "release": 2000.0 }
+  },
+  "effects": [
+    { "type": "phaser", "mix": 0.4, "rate": 0.2, "depth": 0.6, "feedback": 0.4 },
+    { "type": "reverb", "mix": 0.3, "t60": 4.0 },
+    { "type": "off", "mix": 0.0 },
+    { "type": "off", "mix": 0.0 }
+  ],
+  "lfos": [
+    { "shape": "sine", "rate": 0.2, "depth": 0.3, "targets": [{ "param": "osc1.detune", "depth": 0.15 }] },
+    { "shape": "sine", "rate": 1.0, "depth": 0.0, "targets": [] },
+    { "shape": "sine", "rate": 1.0, "depth": 0.0, "targets": [] },
+    { "shape": "sine", "rate": 1.0, "depth": 0.0, "targets": [] }
+  ],
+  "macros": [
+    { "value": 0.0, "cc": -1, "targets": [] },
+    { "value": 0.0, "cc": -1, "targets": [] },
+    { "value": 0.0, "cc": -1, "targets": [] },
+    { "value": 0.0, "cc": -1, "targets": [] }
+  ]
+}
