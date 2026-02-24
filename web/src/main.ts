@@ -250,8 +250,12 @@ style.textContent = `
     gap: 6px;
   }
 
-  .panel.compact-center {
+  .panel-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     justify-content: center;
+    flex: 1;
   }
 
   .panel-title {
@@ -1282,14 +1286,18 @@ leftCol.appendChild(topRow);
 // Sub + Ring Mod
 {
   const { panel } = makePanel('Mod');
-  panel.classList.add('compact-center');
   panel.style.minWidth = '90px';
-  panel.appendChild(makeKnobsRow(
+
+  const contentWrapper = document.createElement('div');
+  contentWrapper.className = 'panel-content-wrapper';
+  contentWrapper.appendChild(makeKnobsRow(
     buildKnob('sub_level', 40),
   ));
-    panel.appendChild(makeKnobsRow(
+  contentWrapper.appendChild(makeKnobsRow(
     buildKnob('ring_mod', 40),
   ));
+  panel.appendChild(contentWrapper);
+
   topRow.appendChild(panel);
 }
 
