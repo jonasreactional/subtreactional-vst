@@ -88,7 +88,7 @@ const PARAMS: ParamDef[] = [
   { id: 'num_voices', label: 'Voices', min: 0, max: 15, defaultValue: 7, type: 'combo', options: VOICE_COUNTS },
   // LFO 1-4
   ...([0, 1, 2, 3] as const).flatMap((i) => [
-    { id: `lfo${i}_rate`,  label: `LFO${i+1} Rate`, min: 0.1, max: 20, defaultValue: 1, type: 'slider' as const },
+    { id: `lfo${i}_rate`,  label: `LFO${i+1} Rate`, min: 0.1, max: 20, defaultValue: 1, step: 0.01, type: 'slider' as const },
     { id: `lfo${i}_depth`, label: 'Depth', min: 0, max: 1, defaultValue: 0, type: 'slider' as const },
     { id: `lfo${i}_shape`, label: 'Shape', min: 0, max: 3, defaultValue: 0, type: 'combo' as const, options: LFO_SHAPES },
   ]),
@@ -1922,7 +1922,15 @@ function buildKnob(id: string, size: number, showLabel?: boolean): HTMLElement {
   function onDragMove(e: MouseEvent) {
     const dy = dragStartY - e.clientY;
     const delta = dy / 200;
-    const newNorm = Math.max(0, Math.min(1, dragStartNorm + delta));
+    let newNorm = Math.max(0, Math.min(1, dragStartNorm + delta));
+
+    // Quantize to step if defined
+    if (def.step) {
+      const rawValue = def.min + newNorm * (def.max - def.min);
+      const quantized = Math.round(rawValue / def.step) * def.step;
+      newNorm = (quantized - def.min) / (def.max - def.min);
+    }
+
     currentNormRef = newNorm;
     knob.setValue(newNorm);
     setParam(id, newNorm);
