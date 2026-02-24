@@ -986,7 +986,7 @@ style.textContent = `
 
   /* ─── Custom tooltips (fixed positioning) ────────────────────────────────────────── */
   [data-tooltip] {
-    cursor: default;
+
   }
 
   .tooltip-portal {
@@ -1071,11 +1071,41 @@ document.addEventListener('mouseout', (e) => {
   }
 });
 
-document.addEventListener('mousemove', () => {
+document.addEventListener('mousemove', (e) => {
   if (activeTooltipElement && tooltipPortal.classList.contains('visible')) {
     positionTooltip(activeTooltipElement);
   }
+  // Update value display position if active
+  if (valueDisplayActive) {
+    valueDisplayPortal.style.left = `${e.clientX + 8}px`;
+    valueDisplayPortal.style.top = `${e.clientY - 16}px`;
+  }
 });
+
+// ---------------------------------------------------------------------------
+// Value display during knob drag
+// ---------------------------------------------------------------------------
+
+let valueDisplayActive = false;
+const valueDisplayPortal = document.createElement('div');
+valueDisplayPortal.className = 'tooltip-portal'; // reuse tooltip styling
+valueDisplayPortal.style.zIndex = '10002'; // slightly higher than tooltip
+document.body.appendChild(valueDisplayPortal);
+
+function showValueDisplay(value: string) {
+  valueDisplayActive = true;
+  valueDisplayPortal.textContent = value;
+  valueDisplayPortal.classList.add('visible');
+}
+
+function hideValueDisplay() {
+  valueDisplayActive = false;
+  valueDisplayPortal.classList.remove('visible');
+}
+
+function updateValueDisplay(value: string) {
+  valueDisplayPortal.textContent = value;
+}
 
 // ---------------------------------------------------------------------------
 // SVG Knob component
@@ -1896,17 +1926,28 @@ function buildKnob(id: string, size: number, showLabel?: boolean): HTMLElement {
     currentNormRef = newNorm;
     knob.setValue(newNorm);
     setParam(id, newNorm);
+
+    // Update value display with 2 decimal places
+    const rawValue = def.min + newNorm * (def.max - def.min);
+    const displayValue = rawValue.toFixed(2);
+    updateValueDisplay(displayValue);
   }
 
   function onDragUp() {
     window.removeEventListener('mousemove', onDragMove);
     window.removeEventListener('mouseup', onDragUp);
+    hideValueDisplay();
   }
 
   container.addEventListener('mousedown', (e) => {
     e.preventDefault();
     dragStartY = e.clientY;
     dragStartNorm = currentNormRef;
+
+    // Show value display on drag start
+    const rawValue = def.min + currentNormRef * (def.max - def.min);
+    showValueDisplay(rawValue.toFixed(2));
+
     window.addEventListener('mousemove', onDragMove);
     window.addEventListener('mouseup', onDragUp);
   });
