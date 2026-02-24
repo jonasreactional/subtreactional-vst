@@ -94,10 +94,14 @@ const PARAMS: ParamDef[] = [
     { id: `lfo${i}_shape`, label: 'Shape', min: 0, max: 3, defaultValue: 0, type: 'combo' as const, options: LFO_SHAPES },
     { id: `lfo${i}_dest`,  label: 'Dest', min: 0, max: 4, defaultValue: 0, type: 'combo' as const, options: LFO_DESTS },
   ]),
-  // Macros 1-4
-  ...([0, 1, 2, 3] as const).flatMap((i) => [
-    { id: `macro${i}`, label: `Macro ${i+1}`, min: 0, max: 1, defaultValue: 0, type: 'slider' as const },
-  ]),
+  // Macros 1-4 (with CC assignments)
+  ...([0, 1, 2, 3] as const).flatMap((i) => {
+    const ccDefaults = [70, 71, 74, 75]; // Sound controller CCs
+    return [
+      { id: `macro${i}`, label: `Macro ${i+1}`, min: 0, max: 1, defaultValue: 0, type: 'slider' as const },
+      { id: `macro${i}_cc`, label: `Macro ${i+1} CC`, min: 0, max: 127, defaultValue: ccDefaults[i], type: 'slider' as const },
+    ];
+  }),
 ];
 
 // ---------------------------------------------------------------------------
@@ -956,6 +960,67 @@ function buildDropdown(id: string, width?: number): HTMLElement {
   return dd.el;
 }
 
+// Helper: create a CC number input for a macro
+function buildCCInput(id: string): HTMLElement {
+  const def = paramMap.get(id)!;
+  const ccValue = Math.round((def.defaultValue - def.min) / (def.max - def.min) * 127);
+
+  const wrap = document.createElement('div');
+  wrap.style.display = 'flex';
+  wrap.style.flexDirection = 'column';
+  wrap.style.gap = '2px';
+  wrap.style.alignItems = 'center';
+
+  const label = document.createElement('div');
+  label.style.fontSize = '8px';
+  label.style.color = `${C.white48}`;
+  label.style.textTransform = 'uppercase';
+  label.style.letterSpacing = '0.5px';
+  label.textContent = 'CC';
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = '0';
+  input.max = '127';
+  input.value = String(ccValue);
+  input.style.width = '40px';
+  input.style.height = '24px';
+  input.style.background = `${C.offDark}`;
+  input.style.border = `1px solid ${C.offDark3}`;
+  input.style.borderRadius = '4px';
+  input.style.color = `${C.offWhite}`;
+  input.style.fontSize = '11px';
+  input.style.padding = '0 6px';
+  input.style.fontFamily = "'Inter', system-ui, sans-serif";
+  input.style.textAlign = 'center';
+  input.style.cursor = 'pointer';
+
+  input.addEventListener('change', () => {
+    const ccNum = Math.max(0, Math.min(127, parseInt(input.value, 10) || 0));
+    input.value = String(ccNum);
+    const norm = ccNum / 127;
+    setParam(id, norm);
+  });
+
+  input.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const delta = (e as WheelEvent).deltaY < 0 ? 1 : -1;
+    const ccNum = Math.max(0, Math.min(127, parseInt(input.value, 10) + delta));
+    input.value = String(ccNum);
+    const norm = ccNum / 127;
+    setParam(id, norm);
+  });
+
+  onParam(id, (v) => {
+    const ccNum = Math.round(v * 127);
+    input.value = String(ccNum);
+  });
+
+  wrap.appendChild(label);
+  wrap.appendChild(input);
+  return wrap;
+}
+
 // Helper: create a panel with title
 function makePanel(title: string, extraClass?: string): { panel: HTMLElement; body: HTMLElement } {
   const panel = document.createElement('div');
@@ -1413,15 +1478,29 @@ for (let i = 0; i < 4; i++) {
   lfosGrid.appendChild(panel);
 }
 
-// Macros 1-4 stacked
+// Macros 1-4 stacked (with CC inputs)
 {
   const { panel } = makePanel('Macros');
-  panel.style.minWidth = '100px';
+  panel.style.minWidth = '0';
 
   for (let i = 0; i < 4; i++) {
-    panel.appendChild(makeKnobsRow(
-      buildKnob(`macro${i}`, 34),
-    ));
+    const macroRow = document.createElement('div');
+    macroRow.style.display = 'flex';
+    macroRow.style.gap = '6px';
+    macroRow.style.alignItems = 'center';
+    macroRow.style.justifyContent = 'space-between';
+
+    const knobLabel = document.createElement('div');
+    knobLabel.style.fontSize = '9px';
+    knobLabel.style.color = `${C.white48}`;
+    knobLabel.style.minWidth = '40px';
+    knobLabel.textContent = `M${i + 1}`;
+
+    macroRow.appendChild(knobLabel);
+    macroRow.appendChild(buildKnob(`macro${i}`, 28));
+    macroRow.appendChild(buildCCInput(`macro${i}_cc`));
+
+    panel.appendChild(macroRow);
   }
 
   midCol.appendChild(panel);
