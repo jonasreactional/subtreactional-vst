@@ -633,16 +633,21 @@ style.textContent = `
 
   /* ─── Macro drag handle ─────────────────────────────────────────── */
   .macro-drag-handle {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
     cursor: grab;
     flex-shrink: 0;
     transition: transform 0.1s;
+    box-shadow: 0 0 6px var(--lfo-color, #F04E4E);
   }
 
   .macro-drag-handle:hover {
     transform: scale(1.2);
+  }
+
+  .macro-drag-handle:active {
+    cursor: grabbing;
   }
 
   /* ─── Modulation depth mini-knob ────────────────────────────────── */
@@ -2161,9 +2166,9 @@ for (let i = 0; i < 4; i++) {
   });
 
   topLfoRow.appendChild(dragHandle);
-  topLfoRow.appendChild(buildWaveformSelector(i));
 
   panel.appendChild(topLfoRow);
+  panel.appendChild(buildWaveformSelector(i));
   panel.appendChild(makeKnobsRow(
     buildKnob(`lfo${i}_rate`, 40),
     buildKnob(`lfo${i}_depth`, 40),
@@ -2187,17 +2192,18 @@ for (let i = 0; i < 4; i++) {
     macroCell.style.display = 'flex';
     macroCell.style.flexDirection = 'column';
     macroCell.style.gap = '4px';
-    macroCell.style.alignItems = 'center';
+    macroCell.style.alignItems = 'flex-start';
 
     const macroColor = MACRO_COLORS[i];
 
     // Header row: drag handle + label
     const macroHeader = document.createElement('div');
-    macroHeader.style.cssText = 'display:flex;align-items:center;gap:4px;';
+    macroHeader.style.cssText = 'display:flex;align-items:center;gap:6px;padding:2px 0;';
 
     const macroDragHandle = document.createElement('div');
     macroDragHandle.className = 'macro-drag-handle';
     macroDragHandle.style.background = macroColor;
+    macroDragHandle.style.setProperty('--lfo-color', macroColor);
     macroDragHandle.draggable = true;
     macroDragHandle.title = `Drag Macro ${i + 1} onto a knob to modulate it`;
 
