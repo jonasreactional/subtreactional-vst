@@ -63,16 +63,16 @@ const PARAMS: ParamDef[] = [
   ...([0, 1, 2, 3] as const).flatMap((i) => [
     { id: `fx${i}_type`,             label: `FX${i} Type`,    min: 0, max: 7,    defaultValue: 0,    type: 'combo' as const, options: FX_TYPES },
     { id: `fx${i}_mix`,              label: 'Mix',             min: 0, max: 1,    defaultValue: 0.3,  type: 'slider' as const },
-    { id: `fx${i}_delay_time`,       label: 'Dly Time',        min: 10, max: 1000, defaultValue: 250, type: 'slider' as const },
-    { id: `fx${i}_delay_feedback`,   label: 'Dly Fb',          min: 0, max: 0.99, defaultValue: 0.3,  type: 'slider' as const },
+    { id: `fx${i}_delay_time`,       label: 'Time',        min: 10, max: 1000, defaultValue: 250, type: 'slider' as const },
+    { id: `fx${i}_delay_feedback`,   label: 'Fb',          min: 0, max: 0.99, defaultValue: 0.3,  type: 'slider' as const },
     { id: `fx${i}_chorus_rate`,      label: 'Rate',            min: 0.1, max: 10, defaultValue: 0.5,  type: 'slider' as const },
-    { id: `fx${i}_chorus_depth`,     label: 'Depth',           min: 0, max: 1,    defaultValue: 0.4,  type: 'slider' as const },
-    { id: `fx${i}_reverb_t60`,       label: 'Rvb T60',         min: 0.1, max: 10, defaultValue: 2.0,  type: 'slider' as const },
+    { id: `fx${i}_chorus_depth`,     label: 'Dpth',           min: 0, max: 1,    defaultValue: 0.4,  type: 'slider' as const },
+    { id: `fx${i}_reverb_t60`,       label: 'T60',         min: 0.1, max: 10, defaultValue: 2.0,  type: 'slider' as const },
     { id: `fx${i}_distortion_drive`, label: 'Drive',           min: 0, max: 10,   defaultValue: 1.0,  type: 'slider' as const },
     { id: `fx${i}_vhs_wow_rate`,     label: 'Wow',             min: 0.1, max: 5,  defaultValue: 0.35, type: 'slider' as const },
-    { id: `fx${i}_vhs_wow_depth`,    label: 'Wow %',           min: 0, max: 1,    defaultValue: 0.25, type: 'slider' as const },
+    { id: `fx${i}_vhs_wow_depth`,    label: 'Wow%',           min: 0, max: 1,    defaultValue: 0.25, type: 'slider' as const },
     { id: `fx${i}_vhs_flutter_rate`, label: 'Fltr',            min: 1, max: 20,   defaultValue: 6.0,  type: 'slider' as const },
-    { id: `fx${i}_vhs_flutter_depth`,label: 'Fltr %',          min: 0, max: 1,    defaultValue: 0.15, type: 'slider' as const },
+    { id: `fx${i}_vhs_flutter_depth`,label: 'Fltr%',          min: 0, max: 1,    defaultValue: 0.15, type: 'slider' as const },
     { id: `fx${i}_vhs_drive`,        label: 'Drive',           min: 0, max: 1,    defaultValue: 0.25, type: 'slider' as const },
     { id: `fx${i}_vhs_tone`,         label: 'Tone',            min: 0, max: 1,    defaultValue: 0.35, type: 'slider' as const },
     { id: `fx${i}_vhs_noise`,        label: 'Noise',           min: 0, max: 1,    defaultValue: 0.1,  type: 'slider' as const },
@@ -574,7 +574,7 @@ style.textContent = `
 
   .knob-label {
     font-size: 9px;
-    color: ${C.white48};
+    color: ${C.white24};
     text-align: center;
     white-space: nowrap;
     letter-spacing: 0.5px;
@@ -762,6 +762,26 @@ style.textContent = `
     color: ${C.white48};
     text-transform: uppercase;
     text-align: center;
+    opacity: 0.25;
+  }
+
+  .fx-type-wrapper {
+    margin-top: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .fx-type-label {
+    font-size: 12px;
+    opacity: 0.2;
+    color: ${C.offWhite};
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    left: 25px;
+    top: 25px;
+    position: absolute;
   }
 
   .fx-slot-main {
@@ -842,7 +862,7 @@ style.textContent = `
 
   .analyzer-canvas-wrap {
     width: 100px;
-    height: 82px;
+    height: 90px;
     flex: 0 0 auto;
     border: 1px solid ${C.offDark3};
     border-radius: 10px;
@@ -1005,8 +1025,8 @@ function valueToKnobAngle(normValue: number): number {
   return 210 + normValue * 270;
 }
 
-function createKnob(opts: KnobOptions): KnobControl {
-  const { size, min, max, defaultValue, label } = opts;
+function createKnob(opts: KnobOptions & { showLabel?: boolean }): KnobControl {
+  const { size, min, max, defaultValue, label, showLabel = true } = opts;
   const normDefault = (defaultValue - min) / (max - min);
 
   const wrap = document.createElement('div');
@@ -1131,7 +1151,8 @@ function createKnob(opts: KnobOptions): KnobControl {
   const lbl = document.createElement('div');
   lbl.className = 'knob-label';
   lbl.textContent = label;
-  wrap.appendChild(lbl);
+  if (showLabel)
+    wrap.appendChild(lbl);
 
   // Animation state
   let currentNorm = normDefault;
@@ -1759,10 +1780,10 @@ function setupKnobDropZone(containerEl: HTMLElement, paramId: string) {
 }
 
 // Helper: create a knob for a slider param + wire it
-function buildKnob(id: string, size: number): HTMLElement {
+function buildKnob(id: string, size: number, showLabel?: boolean): HTMLElement {
   const def = paramMap.get(id)!;
   const normDefault = (def.defaultValue - def.min) / (def.max - def.min);
-  const knob = createKnob({ size, min: def.min, max: def.max, defaultValue: def.defaultValue, label: def.label });
+  const knob = createKnob({ size, min: def.min, max: def.max, defaultValue: def.defaultValue, label: def.label, showLabel });
 
   knob.setValue(normDefault);
 
@@ -2444,7 +2465,16 @@ envRow.appendChild(makeAnalyzerPanel());
       updateFxVisibility(idx);
     });
 
-    slotMain.appendChild(typeDropdown);
+    // Wrapper: label + dropdown
+    const fxTypeWrapper = document.createElement('div');
+    fxTypeWrapper.className = 'fx-type-wrapper';
+    const fxTypeLabel = document.createElement('div');
+    fxTypeLabel.className = 'fx-type-label';
+    fxTypeLabel.textContent = `FX${i + 1}`;
+    fxTypeWrapper.appendChild(fxTypeLabel);
+    fxTypeWrapper.appendChild(typeDropdown);
+
+    slotMain.appendChild(fxTypeWrapper);
     slotMain.appendChild(mixKnob);
 
     slot.appendChild(slotLabel);
@@ -2482,8 +2512,7 @@ for (let i = 0; i < 4; i++) {
 
   // Top row: drag handle + waveform selector
   const topLfoRow = document.createElement('div');
-  topLfoRow.style.cssText = 'display:flex;align-items:center;gap:6px;padding:2px 0;';
-
+  topLfoRow.style.cssText = 'display:flex;align-items:center;gap:6px;padding:6px 0;';
   const dragHandle = document.createElement('div');
   dragHandle.className = 'lfo-drag-handle';
   dragHandle.style.background = lfoColor;
@@ -2520,7 +2549,7 @@ for (let i = 0; i < 4; i++) {
 {
   const { panel } = makePanel('Macros');
   panel.style.minWidth = '0';
-  panel.style.minHeight = '195px';
+  panel.style.minHeight = '192px';
 
   const macrosGrid = document.createElement('div');
   macrosGrid.style.display = 'grid';
@@ -2531,7 +2560,7 @@ for (let i = 0; i < 4; i++) {
     const macroCell = document.createElement('div');
     macroCell.style.display = 'flex';
     macroCell.style.flexDirection = 'column';
-    macroCell.style.gap = '4px';
+    macroCell.style.gap = '14px';
     macroCell.style.alignItems = 'flex-start';
 
     const macroColor = MACRO_COLORS[i];
@@ -2573,7 +2602,7 @@ for (let i = 0; i < 4; i++) {
     knobRow.style.gap = '4px';
     knobRow.style.alignItems = 'center';
 
-    knobRow.appendChild(buildKnob(`macro${i}_value`, 45));
+    knobRow.appendChild(buildKnob(`macro${i}_value`, 45, false));
     knobRow.appendChild(buildCCInput(`macro${i}_cc`));
 
     macroCell.appendChild(macroHeader);
