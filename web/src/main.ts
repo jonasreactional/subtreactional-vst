@@ -1173,9 +1173,10 @@ function makeArcPath(cx: number, cy: number, r: number, startDeg: number, endDeg
 }
 
 function valueToKnobAngle(normValue: number): number {
-  // normValue 0..1: rotate from 7 o'clock (210°) to 4 o'clock (480° = 120°).
-  // Takes the long clockwise path around the circle (through 12 o'clock).
-  return 210 + normValue * 270;
+  // Arc uses polarToCartesian where deg=0 → 6-o'clock, so CSS equiv = (deg+180)%360.
+  // Arc min at deg=45 → 225° CSS; arc max at deg=315 → 135° CSS (225+270=495=135°).
+  // Starting at 225° (≈7:30) means norm=0.5 lands exactly at 0°/360° (12 o'clock, straight up).
+  return 225 + normValue * 270;
 }
 
 function createKnob(opts: KnobOptions & { showLabel?: boolean }): KnobControl {
