@@ -67,6 +67,7 @@ void SubtreactionalAudioProcessorEditor::filesDropped (const juce::StringArray& 
 
         const auto bytes = json.toUTF8();
         processor.setStateInformation (bytes.getAddress(), (int) std::strlen (bytes.getAddress()));
+        bridge.pushAllParams();  // sync knobs, mod assignments and preset list to UI
         break; // load the first valid JSON and stop
     }
 }

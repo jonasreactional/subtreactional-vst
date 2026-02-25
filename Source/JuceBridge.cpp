@@ -255,7 +255,7 @@ bool JuceBridge::pageAboutToLoad (const juce::String& newURL)
         const int capturedIdx = idx;
         juce::MessageManager::callAsync ([this, capturedIdx]() {
             processor.loadFactoryPreset (capturedIdx);
-            pushPresetList();
+            pushAllParams();   // pushes params + mod assignments + preset list
         });
         return false;
     }
@@ -273,6 +273,7 @@ bool JuceBridge::pageAboutToLoad (const juce::String& newURL)
         }
         juce::MessageManager::callAsync ([this, path]() {
             processor.loadUserPreset (path);
+            pushAllParams();   // pushes params + mod assignments + preset list
         });
         return false;
     }
