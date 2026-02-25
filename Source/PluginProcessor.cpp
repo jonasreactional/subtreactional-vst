@@ -484,26 +484,37 @@ void SubtreactionalAudioProcessor::rebuildModAssignmentsFromPatch()
     modAssignments_.clear();
     if (! synthInitialised) return;
 
+    // Reverse map: st_mod_param enum value → dot-notation name.
+    // Order MUST match the st_mod_param enum in st_types.h exactly.
+    static const char* kModParamNames[ST_MOD_PARAM_COUNT] = {
+        "pitch",                                          // ST_MOD_PITCH
+        "osc1.pitch",                                     // ST_MOD_OSC1_PITCH
+        "osc1.level",   "osc1.detune",                    // ST_MOD_OSC1_LEVEL/DETUNE
+        "osc1.pulse_width", "osc1.pan",                   // ST_MOD_OSC1_PULSE_WIDTH/PAN
+        "osc2.pitch",                                     // ST_MOD_OSC2_PITCH
+        "osc2.level",   "osc2.detune",                    // ST_MOD_OSC2_LEVEL/DETUNE
+        "osc2.pulse_width", "osc2.pan",                   // ST_MOD_OSC2_PULSE_WIDTH/PAN
+        "sub.level",    "ring_mod",                       // ST_MOD_SUB_LEVEL/RING_MOD
+        "filter.cutoff", "filter.resonance",              // ST_MOD_FILTER_CUTOFF/RESONANCE
+        "fenv.attack",  "fenv.decay",                     // ST_MOD_FENV_ATTACK/DECAY
+        "fenv.sustain", "fenv.release",                   // ST_MOD_FENV_SUSTAIN/RELEASE
+        "amp",                                            // ST_MOD_AMP
+        "aenv.attack",  "aenv.decay",                     // ST_MOD_AENV_ATTACK/DECAY
+        "aenv.sustain", "aenv.release",                   // ST_MOD_AENV_SUSTAIN/RELEASE
+        "pan_spread",   "master_volume",                  // ST_MOD_PAN_SPREAD/MASTER_VOLUME
+        "fx0.mix", "fx1.mix", "fx2.mix", "fx3.mix",      // ST_MOD_FX0-3_MIX
+    };
+
     // Rebuild from LFOs
     for (int l = 0; l < ST_MAX_LFOS; ++l)
     {
         const st_lfo_data& lfo = synth.patch.lfos[l];
         for (int t = 0; t < lfo.num_targets; ++t)
         {
-            // Convert st_mod_param enum back to string name
-            static const char* paramNames[] = {
-                "pitch",
-                "osc1.level", "osc1.detune", "osc1.pulse_width", "osc1.pan",
-                "osc2.level", "osc2.detune", "osc2.pulse_width", "osc2.pan",
-                "sub.level", "ring_mod",
-                "filter.cutoff", "filter.resonance",
-                "amp", "pan_spread", "master_volume",
-                "fx0.mix", "fx1.mix", "fx2.mix", "fx3.mix"
-            };
             int paramIdx = static_cast<int> (lfo.targets[t].param);
             if (paramIdx < 0 || paramIdx >= ST_MOD_PARAM_COUNT) continue;
             modAssignments_.push_back ({ 0, l,
-                                         juce::String (paramNames[paramIdx]),
+                                         juce::String (kModParamNames[paramIdx]),
                                          lfo.targets[t].depth });
         }
     }
@@ -514,19 +525,10 @@ void SubtreactionalAudioProcessor::rebuildModAssignmentsFromPatch()
         const st_macro_data& mac = synth.patch.macros[m];
         for (int t = 0; t < mac.num_targets; ++t)
         {
-            static const char* paramNames[] = {
-                "pitch",
-                "osc1.level", "osc1.detune", "osc1.pulse_width", "osc1.pan",
-                "osc2.level", "osc2.detune", "osc2.pulse_width", "osc2.pan",
-                "sub.level", "ring_mod",
-                "filter.cutoff", "filter.resonance",
-                "amp", "pan_spread", "master_volume",
-                "fx0.mix", "fx1.mix", "fx2.mix", "fx3.mix"
-            };
             int paramIdx = static_cast<int> (mac.targets[t].param);
             if (paramIdx < 0 || paramIdx >= ST_MOD_PARAM_COUNT) continue;
             modAssignments_.push_back ({ 1, m,
-                                         juce::String (paramNames[paramIdx]),
+                                         juce::String (kModParamNames[paramIdx]),
                                          mac.targets[t].depth });
         }
     }
