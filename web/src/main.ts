@@ -1631,6 +1631,9 @@ interface ModDepthEntry {
 const lfoCurrentOutput = [0, 0, 0, 0];
 onLFO((vals) => { for (let i = 0; i < 4; i++) lfoCurrentOutput[i] = vals[i] ?? 0; });
 
+// LED elements for the 4 LFO panels — populated when the panels are built below.
+const lfoLeds: HTMLElement[] = [];
+
 const macroV = [0, 0, 0, 0]; // 0..1 raw knob value
 
 // Scales: how much one unit of mod_offset shifts the display-range value
@@ -1724,6 +1727,19 @@ function registerModIndicatorUpdater(paramId: string): void {
 
 function modRafLoop(): void {
   modIndicatorUpdaters.forEach((update) => update());
+
+  // Animate LFO LEDs: positive half of each cycle → dim at 0, bright at peak depth.
+  for (let i = 0; i < 4; i++) {
+    const led = lfoLeds[i];
+    if (!led) continue;
+    const level = Math.max(0, lfoCurrentOutput[i]); // 0..lfoDepth
+    const opacity = 0.08 + level * 0.92;
+    led.style.opacity = opacity.toFixed(3);
+    led.style.boxShadow = level > 0.02
+      ? `0 0 ${(level * 10).toFixed(1)}px ${LFO_COLORS[i]}`
+      : 'none';
+  }
+
   requestAnimationFrame(modRafLoop);
 }
 requestAnimationFrame(modRafLoop);
@@ -2727,6 +2743,23 @@ for (let i = 0; i < 4; i++) {
   });
 
   topLfoRow.appendChild(dragHandle);
+
+  // LED pulse indicator — right-aligned in the same row as the drag handle.
+  // Brightness pulses with lfoCurrentOutput[i] (positive half only) so it
+  // blinks once per LFO cycle at an intensity that reflects the current depth.
+  const led = document.createElement('div');
+  led.style.cssText = `
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: ${lfoColor};
+    margin-left: auto;
+    flex-shrink: 0;
+    opacity: 0.08;
+    transition: opacity 40ms linear, box-shadow 40ms linear;
+    pointer-events: none;
+  `;
+  topLfoRow.appendChild(led);
+  lfoLeds[i] = led;
 
   panel.appendChild(topLfoRow);
   panel.appendChild(buildWaveformSelector(i));
