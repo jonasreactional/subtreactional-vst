@@ -71,6 +71,15 @@ void JuceBridge::pushWaveform (const float* points, int numPoints)
              + makeNumericArrayLiteral (points, numPoints) + ")");
 }
 
+void JuceBridge::pushLFOValues (const float* vals, int n)
+{
+    if (vals == nullptr || n <= 0)
+        return;
+
+    goToURL ("javascript:window.__juce && window.__juce.onLFO("
+             + makeNumericArrayLiteral (vals, n) + ")");
+}
+
 void JuceBridge::pushSpectrogram (const float* bins, int numBins)
 {
     if (bins == nullptr || numBins <= 0)

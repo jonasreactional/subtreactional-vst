@@ -33,12 +33,14 @@ interface JuceBridgeGlobal {
   onParam(id: string, value: number): void;
   onWaveform(values: number[]): void;
   onSpectrogram(values: number[]): void;
+  onLFO(values: number[]): void;
   onModAssignments(assignments: ModAssignmentInfo[]): void;
   onPresets(presets: PresetInfo[]): void;
 }
 
 type Listener = (value: number) => void;
 type AnalyzerListener = (values: number[]) => void;
+type LFOListener = (values: number[]) => void;
 type ModAssignmentsListener = (assignments: ModAssignmentInfo[]) => void;
 type PresetsListener = (presets: PresetInfo[]) => void;
 
@@ -46,6 +48,7 @@ const listeners = new Map<string, Set<Listener>>();
 const lastParamValues = new Map<string, number>();
 const waveformListeners = new Set<AnalyzerListener>();
 const spectrogramListeners = new Set<AnalyzerListener>();
+const lfoListeners = new Set<LFOListener>();
 const modAssignmentsListeners = new Set<ModAssignmentsListener>();
 const presetsListeners = new Set<PresetsListener>();
 
@@ -60,6 +63,9 @@ window.__juce = {
   },
   onSpectrogram(values: number[]) {
     spectrogramListeners.forEach((fn) => fn(values));
+  },
+  onLFO(values: number[]) {
+    lfoListeners.forEach((fn) => fn(values));
   },
   onModAssignments(assignments: ModAssignmentInfo[]) {
     modAssignmentsListeners.forEach((fn) => fn(assignments));
@@ -100,6 +106,12 @@ export function onWaveform(fn: AnalyzerListener): () => void {
 export function onSpectrogram(fn: AnalyzerListener): () => void {
   spectrogramListeners.add(fn);
   return () => spectrogramListeners.delete(fn);
+}
+
+/** Subscribe to LFO output values pushed from C++ (~30 Hz). Returns an unsubscribe function. */
+export function onLFO(fn: LFOListener): () => void {
+  lfoListeners.add(fn);
+  return () => lfoListeners.delete(fn);
 }
 
 /** Subscribe to full mod-assignment state pushed from C++ on page load. */

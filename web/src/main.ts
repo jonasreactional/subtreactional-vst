@@ -1,4 +1,4 @@
-import { setParam, onParam, onWaveform, onSpectrogram, notifyHostReady, sendModAdd, sendModRemove, sendModSetDepth, onModAssignments, onPresets, sendLoadFactoryPreset, sendLoadUserPreset, sendSavePreset, type PresetInfo } from './bridge';
+import { setParam, onParam, onWaveform, onSpectrogram, onLFO, notifyHostReady, sendModAdd, sendModRemove, sendModSetDepth, onModAssignments, onPresets, sendLoadFactoryPreset, sendLoadUserPreset, sendSavePreset, type PresetInfo } from './bridge';
 
 // ---------------------------------------------------------------------------
 // Parameter definitions — mirrors PluginProcessor.cpp kParams
@@ -151,7 +151,7 @@ const MOD_PARAM_NAMES: Record<string, string> = {
   'aenv_sustain':     'aenv.sustain',
   'aenv_release':     'aenv.release',
   'pan_spread':       'pan_spread',
-  'master_volume':    'master.volume',
+  'master_volume':    'master_volume',
   'fx0_mix':          'fx0.mix',
   'fx1_mix':          'fx1.mix',
   'fx2_mix':          'fx2.mix',
@@ -1598,15 +1598,9 @@ app.appendChild(mainLayout);
 
 const paramMap = new Map(PARAMS.map((p) => [p.id, p]));
 
-// Track LFO + macro state for the real-time mod indicator RAF loop.
-// onParam receives the normalised 0..1 value; convert to native range here.
+// Track macro state for the mod indicator RAF loop.
 for (let i = 0; i < 4; i++) {
-  const lfoRateDef  = paramMap.get(`lfo${i}_rate`)!;
-  const lfoDepthDef = paramMap.get(`lfo${i}_depth`)!;
-  onParam(`lfo${i}_rate`,     (v) => { lfoRateHz[i] = lfoRateDef.min  + v * (lfoRateDef.max  - lfoRateDef.min);  });
-  onParam(`lfo${i}_depth`,    (v) => { lfoDepthV[i] = lfoDepthDef.min + v * (lfoDepthDef.max - lfoDepthDef.min); });
-  onParam(`lfo${i}_shape`,    (v) => { lfoShapeV[i] = Math.round(v * 3); });
-  onParam(`macro${i}_value`,  (v) => { macroV[i]    = v; });
+  onParam(`macro${i}_value`, (v) => { macroV[i] = v; });
 }
 
 // ---------------------------------------------------------------------------
@@ -1632,19 +1626,22 @@ interface ModDepthEntry {
 // Real-time modulation value visualisation
 // ---------------------------------------------------------------------------
 
-// LFO state (updated by onParam listeners below)
-const lfoRateHz  = [1, 1, 1, 1];
-const lfoDepthV  = [0, 0, 0, 0];
-const lfoShapeV  = [0, 0, 0, 0]; // 0=sine,1=tri,2=saw,3=square
-const macroV     = [0, 0, 0, 0]; // 0..1 raw knob value
+// Actual LFO output values pushed from C++ at ~30 Hz (raw * depth, -1..+1)
+const lfoCurrentOutput = [0, 0, 0, 0];
+onLFO((vals) => { for (let i = 0; i < 4; i++) lfoCurrentOutput[i] = vals[i] ?? 0; });
+
+const macroV = [0, 0, 0, 0]; // 0..1 raw knob value
 
 // Scales: how much one unit of mod_offset shifts the display-range value
 // Must match st_voice.c multipliers (e.g. filter cutoff * 8000).
+// Raw-unit scale per mod target: how many raw units does depth=1 produce?
+// Used to convert modulation offset → fraction of param range for the indicator.
 const MOD_DISPLAY_SCALE: Record<string, number> = {
-  filter_cutoff:    8000,
-  filter_resonance: 1,
+  pitch:            12,    // ±12 semitones at depth=1 (global pitch)
+  osc1_pitch:       24,    // ±24 semitones
+  osc2_pitch:       24,
   osc1_level:       1,
-  osc1_detune:      100,
+  osc1_detune:      100,   // ±100 cents
   osc1_pulse_width: 1,
   osc1_pan:         1,
   osc2_level:       1,
@@ -1653,6 +1650,14 @@ const MOD_DISPLAY_SCALE: Record<string, number> = {
   osc2_pan:         1,
   sub_level:        1,
   ring_mod:         1,
+  filter_cutoff:    8000,  // ±8000 Hz
+  filter_resonance: 1,
+  fenv_attack:      4000,  // ±4000 ms
+  fenv_decay:       4000,
+  fenv_release:     4000,
+  aenv_attack:      4000,
+  aenv_decay:       4000,
+  aenv_release:     4000,
   pan_spread:       1,
   master_volume:    1,
   fx0_mix:          1,
@@ -1661,21 +1666,12 @@ const MOD_DISPLAY_SCALE: Record<string, number> = {
   fx3_mix:          1,
 };
 
-function computeLFOSample(idx: number, tSec: number): number {
-  const phase = ((tSec * lfoRateHz[idx]) % 1 + 1) % 1;
-  const s = lfoShapeV[idx];
-  if (s === 0) return Math.sin(phase * 2 * Math.PI);
-  if (s === 1) return phase < 0.5 ? 4 * phase - 1 : 3 - 4 * phase;
-  if (s === 2) return phase * 2 - 1;
-  return phase < 0.5 ? 1 : -1;
-}
-
 // Per-knob current normalised base value (written by onParam in buildKnob)
 const knobBaseValues       = new Map<string, number>();
 // Per-knob mod indicator setter (written by buildKnob, used by RAF)
 const modIndicatorSetters  = new Map<string, (norm: number | null) => void>();
-// Active updater functions for the RAF loop (keyed by paramId)
-const modIndicatorUpdaters = new Map<string, (tSec: number) => void>();
+// Active updater functions for the RAF loop (no tSec needed — uses pushed values)
+const modIndicatorUpdaters = new Map<string, () => void>();
 
 function registerModIndicatorUpdater(paramId: string): void {
   if (modIndicatorUpdaters.has(paramId)) return;
@@ -1683,10 +1679,12 @@ function registerModIndicatorUpdater(paramId: string): void {
   const setter = modIndicatorSetters.get(paramId);
   if (!def || !setter) return;
 
-  const range = def.max - def.min;
+  // Compute modulation in raw-unit space (Hz, ms, etc.) then convert back to
+  // norm using the same skew as the JUCE parameter. This gives accurate visual
+  // magnitude — e.g. a filter LFO that hits 20 Hz shows the knob at the bottom.
   const scale = MOD_DISPLAY_SCALE[paramId] ?? 1;
 
-  modIndicatorUpdaters.set(paramId, (tSec: number) => {
+  modIndicatorUpdaters.set(paramId, () => {
     const assignments = modDepthMap.get(paramId) ?? [];
     if (assignments.length === 0) {
       setter(null);
@@ -1694,25 +1692,24 @@ function registerModIndicatorUpdater(paramId: string): void {
       return;
     }
     const normBase = knobBaseValues.get(paramId) ?? 0;
-    const displayBase = normToRaw(normBase, def);
+    const rawBase  = normToRaw(normBase, def);
 
-    let displayOffset = 0;
+    let rawOffset = 0;
     for (const a of assignments) {
-      const raw = a.type === 'lfo'
-        ? computeLFOSample(a.idx, tSec) * lfoDepthV[a.idx]
+      // lfoCurrentOutput[idx] is raw * lfoDepth, pushed from synth at 30 Hz
+      const signal = a.type === 'lfo'
+        ? lfoCurrentOutput[a.idx]
         : macroV[a.idx] * 2 - 1; // bipolar 0..1 → -1..+1
-      displayOffset += raw * a.depth * scale;
+      rawOffset += signal * a.depth * scale;
     }
 
-    const displayMod = Math.max(def.min, Math.min(def.max, displayBase + displayOffset));
-    setter(rawToNorm(displayMod, def));
+    const rawMod = Math.max(def.min, Math.min(def.max, rawBase + rawOffset));
+    setter(rawToNorm(rawMod, def));
   });
 }
 
-const modRafOrigin = performance.now();
-function modRafLoop(ts: number): void {
-  const tSec = (ts - modRafOrigin) / 1000;
-  modIndicatorUpdaters.forEach((update) => update(tSec));
+function modRafLoop(): void {
+  modIndicatorUpdaters.forEach((update) => update());
   requestAnimationFrame(modRafLoop);
 }
 requestAnimationFrame(modRafLoop);

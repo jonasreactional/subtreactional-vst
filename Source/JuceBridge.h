@@ -26,6 +26,9 @@ public:
     /** Push spectrogram magnitudes (0..1) to the web UI (must be called on the message thread). */
     void pushSpectrogram (const float* bins, int numBins);
 
+    /** Push current LFO output values (raw * depth, -1..+1) to the web UI. */
+    void pushLFOValues (const float* vals, int n);
+
     /** Push all current APVTS values to the web UI. */
     void pushAllParams();
 

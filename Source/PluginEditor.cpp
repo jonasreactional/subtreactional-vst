@@ -106,6 +106,8 @@ void SubtreactionalAudioProcessorEditor::timerCallback()
 
     if (buildSpectrogramFrame())
         bridge.pushSpectrogram (spectrogramFrame.data(), static_cast<int> (spectrogramFrame.size()));
+
+    bridge.pushLFOValues (processor.getLFOOutput(), ST_MAX_LFOS);
 }
 
 void SubtreactionalAudioProcessorEditor::appendAnalysisSamples (const float* samples, int numSamples)

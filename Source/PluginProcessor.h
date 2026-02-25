@@ -110,6 +110,9 @@ public:
                             const juce::String& description);
     juce::File getUserPresetsDir() const;
 
+    /** Returns the last per-LFO output values (raw * depth, -1..+1). For display only. */
+    const float* getLFOOutput() const { return synth.lfo_output; }
+
 private:
     static constexpr size_t kMempoolSize = 4 * 1024 * 1024; // 4 MB
     char     mempool[kMempoolSize];
