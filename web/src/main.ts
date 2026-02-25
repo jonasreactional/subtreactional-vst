@@ -1650,7 +1650,7 @@ const MOD_DISPLAY_SCALE: Record<string, number> = {
   osc2_pan:         1,
   sub_level:        1,
   ring_mod:         1,
-  filter_cutoff:    8000,  // ±8000 Hz
+  filter_cutoff:    1,     // unused — see MOD_LOG_SCALE below
   filter_resonance: 1,
   fenv_attack:      4000,  // ±4000 ms
   fenv_decay:       4000,
@@ -1666,6 +1666,12 @@ const MOD_DISPLAY_SCALE: Record<string, number> = {
   fx3_mix:          1,
 };
 
+// Parameters modulated multiplicatively in log2 space (musical symmetry).
+// Value = max octaves at |mod|=1.  Must match st_voice.c constants.
+const MOD_LOG_SCALE: Record<string, number> = {
+  filter_cutoff: 3,  // ±3 octaves at mod=1 → matches `* 3.0f` in st_voice.c
+};
+
 // Per-knob current normalised base value (written by onParam in buildKnob)
 const knobBaseValues       = new Map<string, number>();
 // Per-knob mod indicator setter (written by buildKnob, used by RAF)
@@ -1679,10 +1685,9 @@ function registerModIndicatorUpdater(paramId: string): void {
   const setter = modIndicatorSetters.get(paramId);
   if (!def || !setter) return;
 
-  // Compute modulation in raw-unit space (Hz, ms, etc.) then convert back to
-  // norm using the same skew as the JUCE parameter. This gives accurate visual
-  // magnitude — e.g. a filter LFO that hits 20 Hz shows the knob at the bottom.
-  const scale = MOD_DISPLAY_SCALE[paramId] ?? 1;
+  // Compute modulation in raw-unit space then convert back to norm with skew.
+  const logScale  = MOD_LOG_SCALE[paramId];          // defined → multiplicative
+  const linScale  = MOD_DISPLAY_SCALE[paramId] ?? 1; // fallback → additive Hz/ms
 
   modIndicatorUpdaters.set(paramId, () => {
     const assignments = modDepthMap.get(paramId) ?? [];
@@ -1694,17 +1699,25 @@ function registerModIndicatorUpdater(paramId: string): void {
     const normBase = knobBaseValues.get(paramId) ?? 0;
     const rawBase  = normToRaw(normBase, def);
 
-    let rawOffset = 0;
-    for (const a of assignments) {
-      // lfoCurrentOutput[idx] is raw * lfoDepth, pushed from synth at 30 Hz
-      const signal = a.type === 'lfo'
-        ? lfoCurrentOutput[a.idx]
-        : macroV[a.idx] * 2 - 1; // bipolar 0..1 → -1..+1
-      rawOffset += signal * a.depth * scale;
+    // lfoCurrentOutput[idx] is raw * lfoDepth, pushed from synth at 30 Hz
+    const signal = (a: { type: string; idx: number; depth: number }) =>
+      a.type === 'lfo' ? lfoCurrentOutput[a.idx] : macroV[a.idx] * 2 - 1;
+
+    let rawMod: number;
+    if (logScale !== undefined) {
+      // Multiplicative (log2 octave space) — matches st_voice.c behaviour.
+      // totalMod=1 → rawBase * 2^logScale octaves up; -1 → same octaves down.
+      let totalMod = 0;
+      for (const a of assignments) totalMod += signal(a) * a.depth;
+      rawMod = rawBase * Math.pow(2, totalMod * logScale);
+    } else {
+      // Additive (linear Hz / ms space).
+      let rawOffset = 0;
+      for (const a of assignments) rawOffset += signal(a) * a.depth * linScale;
+      rawMod = rawBase + rawOffset;
     }
 
-    const rawMod = Math.max(def.min, Math.min(def.max, rawBase + rawOffset));
-    setter(rawToNorm(rawMod, def));
+    setter(rawToNorm(Math.max(def.min, Math.min(def.max, rawMod)), def));
   });
 }
 
