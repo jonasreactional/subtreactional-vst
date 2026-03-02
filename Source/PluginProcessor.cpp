@@ -618,6 +618,16 @@ void SubtreactionalAudioProcessor::syncApvtsFromSynth()
             p->setValueNotifyingHost (p->getNormalisableRange().convertTo0to1 (val));
         }
     }
+
+    // play_mode is excluded from kParams[] to avoid voice panic on every block,
+    // so we sync it explicitly here.  prepareToPlay reads the APVTS value, so
+    // without this the synth reverts to Poly on every DAW reload.
+    {
+        float pm = 0.0f;
+        if (st_synth_get_param_float (&synth, "play_mode", &pm) == 0)
+            if (auto* p = apvts.getParameter ("play_mode"))
+                p->setValueNotifyingHost (p->getNormalisableRange().convertTo0to1 (pm));
+    }
 }
 
 int SubtreactionalAudioProcessor::popAnalyzerSamples (float* dest, int maxSamples)
