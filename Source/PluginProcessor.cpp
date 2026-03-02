@@ -61,6 +61,7 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "fx0_chorus_rate",       "fx0.chorus_rate" },
     { "fx0_chorus_depth",      "fx0.chorus_depth" },
     { "fx0_reverb_t60",        "fx0.reverb_t60" },
+    { "fx0_reverb_damping",    "fx0.reverb_damping" },
     { "fx0_distortion_drive",  "fx0.distortion_drive" },
     { "fx0_vhs_wow_rate",      "fx0.vhs_wow_rate" },
     { "fx0_vhs_wow_depth",     "fx0.vhs_wow_depth" },
@@ -78,6 +79,7 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "fx1_chorus_rate",       "fx1.chorus_rate" },
     { "fx1_chorus_depth",      "fx1.chorus_depth" },
     { "fx1_reverb_t60",        "fx1.reverb_t60" },
+    { "fx1_reverb_damping",    "fx1.reverb_damping" },
     { "fx1_distortion_drive",  "fx1.distortion_drive" },
     { "fx1_vhs_wow_rate",      "fx1.vhs_wow_rate" },
     { "fx1_vhs_wow_depth",     "fx1.vhs_wow_depth" },
@@ -95,6 +97,7 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "fx2_chorus_rate",       "fx2.chorus_rate" },
     { "fx2_chorus_depth",      "fx2.chorus_depth" },
     { "fx2_reverb_t60",        "fx2.reverb_t60" },
+    { "fx2_reverb_damping",    "fx2.reverb_damping" },
     { "fx2_distortion_drive",  "fx2.distortion_drive" },
     { "fx2_vhs_wow_rate",      "fx2.vhs_wow_rate" },
     { "fx2_vhs_wow_depth",     "fx2.vhs_wow_depth" },
@@ -112,6 +115,7 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "fx3_chorus_rate",       "fx3.chorus_rate" },
     { "fx3_chorus_depth",      "fx3.chorus_depth" },
     { "fx3_reverb_t60",        "fx3.reverb_t60" },
+    { "fx3_reverb_damping",    "fx3.reverb_damping" },
     { "fx3_distortion_drive",  "fx3.distortion_drive" },
     { "fx3_vhs_wow_rate",      "fx3.vhs_wow_rate" },
     { "fx3_vhs_wow_depth",     "fx3.vhs_wow_depth" },
@@ -236,6 +240,7 @@ SubtreactionalAudioProcessor::createParameterLayout()
         addSlider((fx + "chorus_rate").toRawUTF8(),       0.1f,  10.0f,   0.5f,  0.01f);
         addSlider((fx + "chorus_depth").toRawUTF8(),      0.0f,   1.0f,   0.4f,  0.001f);
         addSlider((fx + "reverb_t60").toRawUTF8(),        0.1f,  10.0f,   2.0f,  0.01f);
+        addSlider((fx + "reverb_damping").toRawUTF8(),  500.0f, 20000.0f, 6000.0f, 1.0f);
         addSlider((fx + "distortion_drive").toRawUTF8(),  0.0f,  10.0f,   1.0f,  0.01f);
         addSlider((fx + "vhs_wow_rate").toRawUTF8(),      0.1f,   5.0f,   0.35f, 0.01f);
         addSlider((fx + "vhs_wow_depth").toRawUTF8(),     0.0f,   1.0f,   0.25f, 0.001f);

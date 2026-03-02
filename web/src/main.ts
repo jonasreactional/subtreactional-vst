@@ -87,7 +87,8 @@ const PARAMS: ParamDef[] = [
     { id: `fx${i}_delay_feedback`,   label: 'Fb',          min: 0, max: 0.99, defaultValue: 0.3,  type: 'slider' as const },
     { id: `fx${i}_chorus_rate`,      label: 'Rate',            min: 0.1, max: 10, defaultValue: 0.5,  type: 'slider' as const },
     { id: `fx${i}_chorus_depth`,     label: 'Dpth',           min: 0, max: 1,    defaultValue: 0.4,  type: 'slider' as const },
-    { id: `fx${i}_reverb_t60`,       label: 'T60',         min: 0.1, max: 10, defaultValue: 2.0,  type: 'slider' as const },
+    { id: `fx${i}_reverb_t60`,       label: 'T60',         min: 0.1, max: 10,    defaultValue: 2.0,    type: 'slider' as const },
+    { id: `fx${i}_reverb_damping`,   label: 'Damp',        min: 500, max: 20000, defaultValue: 6000.0, type: 'slider' as const },
     { id: `fx${i}_distortion_drive`, label: 'Drive',           min: 0, max: 10,   defaultValue: 1.0,  type: 'slider' as const },
     { id: `fx${i}_vhs_wow_rate`,     label: 'Wow',             min: 0.1, max: 5,  defaultValue: 0.35, type: 'slider' as const },
     { id: `fx${i}_vhs_wow_depth`,    label: 'Wow%',           min: 0, max: 1,    defaultValue: 0.25, type: 'slider' as const },
@@ -1984,7 +1985,8 @@ function buildKnob(id: string, size: number, showLabel?: boolean): HTMLElement {
 
   function onDragMove(e: MouseEvent) {
     const dy = dragStartY - e.clientY;
-    const delta = dy / 200;
+    const divisor = e.shiftKey ? 2000 : 500;
+    const delta = dy / divisor;
     let newNorm = Math.max(0, Math.min(1, dragStartNorm + delta));
 
     // Quantize to step if defined
@@ -2602,6 +2604,7 @@ envRow.appendChild(makeAnalyzerPanel());
     const reverbGroup = document.createElement('div');
     reverbGroup.className = 'fx-param-group';
     reverbGroup.appendChild(buildKnob(`fx${i}_reverb_t60`, 26));
+    reverbGroup.appendChild(buildKnob(`fx${i}_reverb_damping`, 26));
 
     const distortionGroup = document.createElement('div');
     distortionGroup.className = 'fx-param-group';
