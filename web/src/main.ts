@@ -100,10 +100,10 @@ const PARAMS: ParamDef[] = [
     { id: `fx${i}_vhs_noise`,        label: 'Noise',           min: 0, max: 1,    defaultValue: 0.1,  type: 'slider' as const },
     { id: `fx${i}_vhs_dropout`,      label: 'Drop',            min: 0, max: 1,    defaultValue: 0.05, type: 'slider' as const },
     { id: `fx${i}_eq_low_freq`,      label: 'Lo Hz',       min: 20,   max: 1000,  defaultValue: 300,  type: 'slider' as const },
-    { id: `fx${i}_eq_low_gain`,      label: 'Lo dB',       min: -24,  max: 12,    defaultValue: 0,    type: 'slider' as const },
-    { id: `fx${i}_eq_mid_gain`,      label: 'Mid dB',      min: -24,  max: 12,    defaultValue: 0,    type: 'slider' as const },
+    { id: `fx${i}_eq_low_gain`,      label: 'Lo dB',       min: -48,  max: 12,    defaultValue: 0,    type: 'slider' as const },
+    { id: `fx${i}_eq_mid_gain`,      label: 'Mid dB',      min: -48,  max: 12,    defaultValue: 0,    type: 'slider' as const },
     { id: `fx${i}_eq_high_freq`,     label: 'Hi Hz',       min: 1000, max: 20000, defaultValue: 5000, type: 'slider' as const },
-    { id: `fx${i}_eq_high_gain`,     label: 'Hi dB',       min: -24,  max: 12,    defaultValue: 0,    type: 'slider' as const },
+    { id: `fx${i}_eq_high_gain`,     label: 'Hi dB',       min: -48,  max: 12,    defaultValue: 0,    type: 'slider' as const },
   ]),
   // Master
   { id: 'master_volume',    label: 'Master',     min: 0, max: 1,    defaultValue: 0.8, type: 'slider' },

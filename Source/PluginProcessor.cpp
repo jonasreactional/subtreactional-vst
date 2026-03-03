@@ -276,10 +276,10 @@ SubtreactionalAudioProcessor::createParameterLayout()
         addSlider((fx + "vhs_noise").toRawUTF8(),         0.0f,   1.0f,   0.1f,  0.001f);
         addSlider((fx + "vhs_dropout").toRawUTF8(),       0.0f,   1.0f,   0.05f, 0.001f);
         addSlider((fx + "eq_low_freq").toRawUTF8(),      20.0f,  1000.0f, 300.0f, 1.0f);
-        addSlider((fx + "eq_low_gain").toRawUTF8(),     -24.0f,   12.0f,   0.0f,  0.1f);
-        addSlider((fx + "eq_mid_gain").toRawUTF8(),     -24.0f,   12.0f,   0.0f,  0.1f);
+        addSlider((fx + "eq_low_gain").toRawUTF8(),     -48.0f,   12.0f,   0.0f,  0.1f);
+        addSlider((fx + "eq_mid_gain").toRawUTF8(),     -48.0f,   12.0f,   0.0f,  0.1f);
         addSlider((fx + "eq_high_freq").toRawUTF8(),   1000.0f, 20000.0f, 5000.0f, 1.0f);
-        addSlider((fx + "eq_high_gain").toRawUTF8(),   -24.0f,   12.0f,   0.0f,  0.1f);
+        addSlider((fx + "eq_high_gain").toRawUTF8(),   -48.0f,   12.0f,   0.0f,  0.1f);
     }
 
     // Master volume
