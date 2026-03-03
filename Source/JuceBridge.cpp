@@ -100,6 +100,11 @@ void JuceBridge::pushAllParams()
             pushParam (p.apvtsId, param->getValue());
     }
 
+    // play_mode is excluded from kParams[] to avoid triggering st_synth_panic()
+    // on every audio block, so push it explicitly here.
+    if (auto* param = processor.apvts.getParameter ("play_mode"))
+        pushParam ("play_mode", param->getValue());
+
     pushModAssignments();
     pushPresetList();
 }

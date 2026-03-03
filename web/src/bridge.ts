@@ -50,6 +50,7 @@ const waveformListeners = new Set<AnalyzerListener>();
 const spectrogramListeners = new Set<AnalyzerListener>();
 const lfoListeners = new Set<LFOListener>();
 const modAssignmentsListeners = new Set<ModAssignmentsListener>();
+let lastModAssignments: ModAssignmentInfo[] | undefined;
 const presetsListeners = new Set<PresetsListener>();
 
 // Install the global that C++ will call
@@ -68,6 +69,7 @@ window.__juce = {
     lfoListeners.forEach((fn) => fn(values));
   },
   onModAssignments(assignments: ModAssignmentInfo[]) {
+    lastModAssignments = assignments;
     modAssignmentsListeners.forEach((fn) => fn(assignments));
   },
   onPresets(presets: PresetInfo[]) {
@@ -114,9 +116,11 @@ export function onLFO(fn: LFOListener): () => void {
   return () => lfoListeners.delete(fn);
 }
 
-/** Subscribe to full mod-assignment state pushed from C++ on page load. */
+/** Subscribe to full mod-assignment state pushed from C++ on page load.
+ *  If a snapshot has already been received, the callback fires immediately. */
 export function onModAssignments(fn: ModAssignmentsListener): () => void {
   modAssignmentsListeners.add(fn);
+  if (lastModAssignments !== undefined) fn(lastModAssignments);
   return () => modAssignmentsListeners.delete(fn);
 }
 

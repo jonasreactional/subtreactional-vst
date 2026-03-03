@@ -62,6 +62,7 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "fx0_chorus_depth",      "fx0.chorus_depth" },
     { "fx0_reverb_t60",        "fx0.reverb_t60" },
     { "fx0_reverb_damping",    "fx0.reverb_damping" },
+    { "fx0_reverb_input_lpf",  "fx0.reverb_input_lpf" },
     { "fx0_distortion_drive",  "fx0.distortion_drive" },
     { "fx0_vhs_wow_rate",      "fx0.vhs_wow_rate" },
     { "fx0_vhs_wow_depth",     "fx0.vhs_wow_depth" },
@@ -71,6 +72,11 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "fx0_vhs_tone",          "fx0.vhs_tone" },
     { "fx0_vhs_noise",         "fx0.vhs_noise" },
     { "fx0_vhs_dropout",       "fx0.vhs_dropout" },
+    { "fx0_eq_low_freq",       "fx0.eq_low_freq" },
+    { "fx0_eq_low_gain",       "fx0.eq_low_gain" },
+    { "fx0_eq_mid_gain",       "fx0.eq_mid_gain" },
+    { "fx0_eq_high_freq",      "fx0.eq_high_freq" },
+    { "fx0_eq_high_gain",      "fx0.eq_high_gain" },
     // FX 1
     { "fx1_type",              "fx1.type" },
     { "fx1_mix",               "fx1.mix" },
@@ -80,6 +86,7 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "fx1_chorus_depth",      "fx1.chorus_depth" },
     { "fx1_reverb_t60",        "fx1.reverb_t60" },
     { "fx1_reverb_damping",    "fx1.reverb_damping" },
+    { "fx1_reverb_input_lpf",  "fx1.reverb_input_lpf" },
     { "fx1_distortion_drive",  "fx1.distortion_drive" },
     { "fx1_vhs_wow_rate",      "fx1.vhs_wow_rate" },
     { "fx1_vhs_wow_depth",     "fx1.vhs_wow_depth" },
@@ -89,6 +96,11 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "fx1_vhs_tone",          "fx1.vhs_tone" },
     { "fx1_vhs_noise",         "fx1.vhs_noise" },
     { "fx1_vhs_dropout",       "fx1.vhs_dropout" },
+    { "fx1_eq_low_freq",       "fx1.eq_low_freq" },
+    { "fx1_eq_low_gain",       "fx1.eq_low_gain" },
+    { "fx1_eq_mid_gain",       "fx1.eq_mid_gain" },
+    { "fx1_eq_high_freq",      "fx1.eq_high_freq" },
+    { "fx1_eq_high_gain",      "fx1.eq_high_gain" },
     // FX 2
     { "fx2_type",              "fx2.type" },
     { "fx2_mix",               "fx2.mix" },
@@ -98,6 +110,7 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "fx2_chorus_depth",      "fx2.chorus_depth" },
     { "fx2_reverb_t60",        "fx2.reverb_t60" },
     { "fx2_reverb_damping",    "fx2.reverb_damping" },
+    { "fx2_reverb_input_lpf",  "fx2.reverb_input_lpf" },
     { "fx2_distortion_drive",  "fx2.distortion_drive" },
     { "fx2_vhs_wow_rate",      "fx2.vhs_wow_rate" },
     { "fx2_vhs_wow_depth",     "fx2.vhs_wow_depth" },
@@ -107,6 +120,11 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "fx2_vhs_tone",          "fx2.vhs_tone" },
     { "fx2_vhs_noise",         "fx2.vhs_noise" },
     { "fx2_vhs_dropout",       "fx2.vhs_dropout" },
+    { "fx2_eq_low_freq",       "fx2.eq_low_freq" },
+    { "fx2_eq_low_gain",       "fx2.eq_low_gain" },
+    { "fx2_eq_mid_gain",       "fx2.eq_mid_gain" },
+    { "fx2_eq_high_freq",      "fx2.eq_high_freq" },
+    { "fx2_eq_high_gain",      "fx2.eq_high_gain" },
     // FX 3
     { "fx3_type",              "fx3.type" },
     { "fx3_mix",               "fx3.mix" },
@@ -116,6 +134,7 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "fx3_chorus_depth",      "fx3.chorus_depth" },
     { "fx3_reverb_t60",        "fx3.reverb_t60" },
     { "fx3_reverb_damping",    "fx3.reverb_damping" },
+    { "fx3_reverb_input_lpf",  "fx3.reverb_input_lpf" },
     { "fx3_distortion_drive",  "fx3.distortion_drive" },
     { "fx3_vhs_wow_rate",      "fx3.vhs_wow_rate" },
     { "fx3_vhs_wow_depth",     "fx3.vhs_wow_depth" },
@@ -125,6 +144,11 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "fx3_vhs_tone",          "fx3.vhs_tone" },
     { "fx3_vhs_noise",         "fx3.vhs_noise" },
     { "fx3_vhs_dropout",       "fx3.vhs_dropout" },
+    { "fx3_eq_low_freq",       "fx3.eq_low_freq" },
+    { "fx3_eq_low_gain",       "fx3.eq_low_gain" },
+    { "fx3_eq_mid_gain",       "fx3.eq_mid_gain" },
+    { "fx3_eq_high_freq",      "fx3.eq_high_freq" },
+    { "fx3_eq_high_gain",      "fx3.eq_high_gain" },
     // Master
     { "master_volume",       "master_volume" },
     { "pitch_bend_range",    "pitch_bend_range" },
@@ -228,8 +252,8 @@ SubtreactionalAudioProcessor::createParameterLayout()
     addSlider("aenv_release", 1.0f, 5000.0f, 500.0f, 0.0f, 0.25f);
 
     // FX slots 0..3
-    // Types: 0=Off,1=Delay,2=Chorus,3=Flanger,4=Phaser,5=VHS,6=Reverb,7=Distortion
-    const juce::StringArray fxTypes { "Off","Delay","Chorus","Flanger","Phaser","VHS","Reverb","Distortion" };
+    // Types: 0=Off,1=Delay,2=Chorus,3=Flanger,4=Phaser,5=VHS,6=Reverb,7=Distortion,8=EQ
+    const juce::StringArray fxTypes { "Off","Delay","Chorus","Flanger","Phaser","VHS","Reverb","Distortion","EQ" };
     for (int i = 0; i < 4; ++i)
     {
         juce::String fx = "fx" + juce::String(i) + "_";
@@ -241,6 +265,7 @@ SubtreactionalAudioProcessor::createParameterLayout()
         addSlider((fx + "chorus_depth").toRawUTF8(),      0.0f,   1.0f,   0.4f,  0.001f);
         addSlider((fx + "reverb_t60").toRawUTF8(),        0.1f,  10.0f,   2.0f,  0.01f);
         addSlider((fx + "reverb_damping").toRawUTF8(),  500.0f, 20000.0f, 6000.0f, 1.0f);
+        addSlider((fx + "reverb_input_lpf").toRawUTF8(), 100.0f, 20000.0f, 500.0f, 1.0f);
         addSlider((fx + "distortion_drive").toRawUTF8(),  0.0f,  10.0f,   1.0f,  0.01f);
         addSlider((fx + "vhs_wow_rate").toRawUTF8(),      0.1f,   5.0f,   0.35f, 0.01f);
         addSlider((fx + "vhs_wow_depth").toRawUTF8(),     0.0f,   1.0f,   0.25f, 0.001f);
@@ -250,6 +275,11 @@ SubtreactionalAudioProcessor::createParameterLayout()
         addSlider((fx + "vhs_tone").toRawUTF8(),          0.0f,   1.0f,   0.35f, 0.001f);
         addSlider((fx + "vhs_noise").toRawUTF8(),         0.0f,   1.0f,   0.1f,  0.001f);
         addSlider((fx + "vhs_dropout").toRawUTF8(),       0.0f,   1.0f,   0.05f, 0.001f);
+        addSlider((fx + "eq_low_freq").toRawUTF8(),      20.0f,  1000.0f, 300.0f, 1.0f);
+        addSlider((fx + "eq_low_gain").toRawUTF8(),     -24.0f,   12.0f,   0.0f,  0.1f);
+        addSlider((fx + "eq_mid_gain").toRawUTF8(),     -24.0f,   12.0f,   0.0f,  0.1f);
+        addSlider((fx + "eq_high_freq").toRawUTF8(),   1000.0f, 20000.0f, 5000.0f, 1.0f);
+        addSlider((fx + "eq_high_gain").toRawUTF8(),   -24.0f,   12.0f,   0.0f,  0.1f);
     }
 
     // Master volume
@@ -305,6 +335,9 @@ SubtreactionalAudioProcessor::SubtreactionalAudioProcessor()
 
     for (auto& a : pendingMacroCC_)
         a.store (-1.0f);
+
+    for (auto& d : pendingLFODepth_)
+        d.store (kNoLFOOverride);
 }
 
 SubtreactionalAudioProcessor::~SubtreactionalAudioProcessor()
@@ -316,6 +349,13 @@ SubtreactionalAudioProcessor::~SubtreactionalAudioProcessor()
 //==============================================================================
 void SubtreactionalAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    // Preserve current patch state (including mod assignments) across re-initialization.
+    // This handles both cases:
+    //  (a) setStateInformation called before first prepareToPlay → pendingState_ already set
+    //  (b) prepareToPlay called again (sample-rate change, DAW transport) → save now
+    if (synthInitialised && pendingState_.isEmpty())
+        getStateInformation (pendingState_);
+
     if (synthInitialised)
         st_synth_deinit (&synth);
 
@@ -346,7 +386,28 @@ void SubtreactionalAudioProcessor::prepareToPlay (double sampleRate, int samples
     }
 
     synthInitialised = true;
-    syncAllParamsToSynth();
+
+    // If setStateInformation was called before prepareToPlay (common DAW pattern),
+    // apply the deferred patch JSON now — it overrides the APVTS defaults below.
+    if (! pendingState_.isEmpty())
+    {
+        applyStateData (pendingState_.getData(), (int) pendingState_.getSize());
+        pendingState_.reset();
+    }
+    else
+    {
+        syncAllParamsToSynth();
+
+        // Mod assignments (LFO/macro targets) are not APVTS params — they only
+        // live in modAssignments_.  After a synth re-init they must be replayed
+        // so that LFO targets survive a second prepareToPlay call from the host.
+        for (const auto& a : modAssignments_)
+            st_synth_mod_add (&synth, a.sourceType, a.sourceIdx,
+                              a.paramName.toRawUTF8(), a.depth);
+
+        if (! modAssignments_.empty())
+            patchJustLoaded_.store (true);
+    }
 
     // Apply play_mode once (has side-effect: st_synth_panic — don't run every block)
     lastPlayMode_ = apvts.getRawParameterValue ("play_mode")->load();
@@ -396,11 +457,31 @@ void SubtreactionalAudioProcessor::processBlock (juce::AudioBuffer<float>& buffe
     }
 
     // Sync all APVTS parameters to the synth before rendering.
-    // getRawParameterValue returns std::atomic<float>*, safe from audio thread.
-    for (int i = 0; i < kNumParams; ++i)
+    // Skipped during applyStateData to prevent overwriting freshly loaded values
+    // with stale APVTS defaults before syncApvtsFromSynth has updated APVTS.
+    if (! apvtsSyncDisabled_.load())
     {
-        float val = apvts.getRawParameterValue (kParams[i].apvtsId)->load();
-        st_synth_set_param_float (&synth, kParams[i].synthName, val);
+        for (int i = 0; i < kNumParams; ++i)
+        {
+            float val = apvts.getRawParameterValue (kParams[i].apvtsId)->load();
+            st_synth_set_param_float (&synth, kParams[i].synthName, val);
+        }
+    }
+
+    // Re-apply LFO depths from the most recent patch load.  This overrides any
+    // stale APVTS values the host may have restored after prepareToPlay returned.
+    // The override stays active on every block until resyncLFOParamsToAPVTS() clears
+    // it from the editor timer (~33 ms after patch load).
+    {
+        static const char* kLFODepthSynthNames[ST_MAX_LFOS] = {
+            "lfo0.depth", "lfo1.depth", "lfo2.depth", "lfo3.depth"
+        };
+        for (int l = 0; l < ST_MAX_LFOS; ++l)
+        {
+            const float d = pendingLFODepth_[l].load();
+            if (d != kNoLFOOverride)
+                st_synth_set_param_float (&synth, kLFODepthSynthNames[l], d);
+        }
     }
 
     // play_mode calls st_synth_panic() on every set — only apply on change.
@@ -467,20 +548,53 @@ void SubtreactionalAudioProcessor::getStateInformation (juce::MemoryBlock& destD
     }
 }
 
-void SubtreactionalAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+void SubtreactionalAudioProcessor::applyStateData (const void* data, int sizeInBytes)
 {
-    if (! synthInitialised || sizeInBytes <= 0)
-        return;
-
     juce::MemoryBlock mb (data, static_cast<size_t> (sizeInBytes));
     mb.append ("\0", 1);
 
     const char* json = static_cast<const char*> (mb.getData());
+
+    // Guard: prevent processBlock from overwriting freshly loaded synth values
+    // with stale APVTS values in the window between st_patch_load_string and
+    // syncApvtsFromSynth.  Without this, the audio thread can clobber e.g.
+    // lfo0.depth back to 0 before syncApvtsFromSynth reads it, permanently
+    // locking the LFO off.
+    apvtsSyncDisabled_.store (true);
+
     if (st_patch_load_string (&synth, json) == 0)
     {
-        syncApvtsFromSynth();   // synth → APVTS so knobs reflect the loaded patch
+        syncApvtsFromSynth();           // synth → APVTS so knobs reflect the loaded patch
         rebuildModAssignmentsFromPatch();
+
+        // Cache each LFO's depth so processBlock can re-apply it after the host
+        // restores stale APVTS values.  The override stays active until the editor
+        // timer calls resyncLFOParamsToAPVTS() (~33 ms later).
+        for (int l = 0; l < ST_MAX_LFOS; ++l)
+            pendingLFODepth_[l].store (synth.patch.lfos[l].depth);
+
+        patchJustLoaded_.store (true);  // signal editor timer to re-push mod assignments
+        // Leave apvtsSyncDisabled_ = true here.  The editor timer will call
+        // resyncLFOParamsToAPVTS() on the next tick (~33 ms), which clears the flag.
     }
+    else
+    {
+        apvtsSyncDisabled_.store (false);
+    }
+}
+
+void SubtreactionalAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+    if (sizeInBytes <= 0)
+        return;
+
+    if (! synthInitialised)
+    {
+        pendingState_.replaceAll (data, static_cast<size_t> (sizeInBytes));
+        return;
+    }
+
+    applyStateData (data, sizeInBytes);
 }
 
 //==============================================================================
@@ -558,6 +672,10 @@ void SubtreactionalAudioProcessor::modAdd (int sourceType, int sourceIdx,
         it->depth = depth;
     else
         modAssignments_.push_back ({ sourceType, sourceIdx, paramName, depth });
+
+    // Mod assignments bypass APVTS — notify the host that state changed so
+    // the DAW marks the project dirty and includes the changes when saving.
+    updateHostDisplay (juce::AudioProcessorListener::ChangeDetails().withNonParameterStateChanged (true));
 }
 
 void SubtreactionalAudioProcessor::modRemove (int sourceType, int sourceIdx,
@@ -574,6 +692,8 @@ void SubtreactionalAudioProcessor::modRemove (int sourceType, int sourceIdx,
                        && a.paramName == paramName;
             }),
         modAssignments_.end());
+
+    updateHostDisplay (juce::AudioProcessorListener::ChangeDetails().withNonParameterStateChanged (true));
 }
 
 void SubtreactionalAudioProcessor::modSetDepth (int sourceType, int sourceIdx,
@@ -591,6 +711,8 @@ void SubtreactionalAudioProcessor::modSetDepth (int sourceType, int sourceIdx,
         });
     if (it != modAssignments_.end())
         it->depth = depth;
+
+    updateHostDisplay (juce::AudioProcessorListener::ChangeDetails().withNonParameterStateChanged (true));
 }
 
 //==============================================================================
@@ -633,6 +755,43 @@ void SubtreactionalAudioProcessor::syncApvtsFromSynth()
             if (auto* p = apvts.getParameter ("play_mode"))
                 p->setValueNotifyingHost (p->getNormalisableRange().convertTo0to1 (pm));
     }
+}
+
+void SubtreactionalAudioProcessor::resyncLFOParamsToAPVTS()
+{
+    if (! synthInitialised)
+        return;
+
+    // Re-sync LFO depth, rate, shape from synth to APVTS.
+    // This counteracts the host's parameter restore (which happens after prepareToPlay
+    // and can clobber APVTS values with stale saved values).
+    for (int l = 0; l < ST_MAX_LFOS; ++l)
+    {
+        const char* fields[] = { "rate", "depth", "shape" };
+        for (const char* field : fields)
+        {
+            juce::String synthName = "lfo" + juce::String (l) + "." + field;
+            juce::String apvtsId = "lfo" + juce::String (l) + "_" + field;
+
+            float val = 0.0f;
+            if (st_synth_get_param_float (&synth, synthName.toRawUTF8(), &val) == 0)
+            {
+                if (auto* p = dynamic_cast<juce::RangedAudioParameter*> (
+                        apvts.getParameter (apvtsId)))
+                {
+                    p->setValueNotifyingHost (p->getNormalisableRange().convertTo0to1 (val));
+                }
+            }
+        }
+    }
+
+    // Clear the LFO depth override — APVTS now holds the correct values so
+    // processBlock's normal APVTS→synth sync will keep the depth correct.
+    for (auto& d : pendingLFODepth_)
+        d.store (kNoLFOOverride);
+
+    // Allow processBlock to resume its APVTS→synth sync now that APVTS is correct.
+    apvtsSyncDisabled_.store (false);
 }
 
 int SubtreactionalAudioProcessor::popAnalyzerSamples (float* dest, int maxSamples)

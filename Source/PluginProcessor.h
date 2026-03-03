@@ -113,6 +113,15 @@ public:
     /** Returns the last per-LFO output values (raw * depth, -1..+1). For display only. */
     const float* getLFOOutput() const { return synth.lfo_output; }
 
+    /** Returns true (and clears the flag) if applyStateData ran since last check.
+     *  Called from the editor timer to know when to re-push mod assignments. */
+    bool checkAndClearPatchLoaded() { return patchJustLoaded_.exchange (false); }
+
+    /** Re-sync LFO depth/rate/shape from synth to APVTS.
+     *  Called from editor timer to counteract host parameter restores that may
+     *  clobber APVTS values after a state load. */
+    void resyncLFOParamsToAPVTS();
+
 private:
     static constexpr size_t kMempoolSize = 4 * 1024 * 1024; // 4 MB
     char     mempool[kMempoolSize];
@@ -130,6 +139,14 @@ private:
 
     void pushAnalyzerSamples (const juce::AudioBuffer<float>& buffer);
 
+    // Apply raw patch JSON to the synth + APVTS + modAssignments_.
+    // Shared by setStateInformation (when synthInitialised) and prepareToPlay
+    // (to flush pendingState_ deferred from an early setStateInformation call).
+    void applyStateData (const void* data, int sizeInBytes);
+
+    // Patch JSON cached when setStateInformation fires before prepareToPlay.
+    juce::MemoryBlock pendingState_;
+
     static constexpr int kAnalyzerFifoSize = 1 << 16;
     juce::AbstractFifo analyzerFifo { kAnalyzerFifoSize };
     std::array<float, kAnalyzerFifoSize> analyzerSampleBuffer {};
@@ -137,10 +154,26 @@ private:
     // Params with side-effects (panic, realloc) — only applied on change
     float lastPlayMode_ = -1.0f;
 
+    // Set to true by applyStateData after rebuildModAssignmentsFromPatch.
+    // Read + cleared by the editor timer to re-push mod assignments to JS.
+    std::atomic<bool> patchJustLoaded_ { false };
+
+    // Set to true around applyStateData to prevent processBlock from overwriting
+    // freshly loaded synth values with stale APVTS values before syncApvtsFromSynth runs.
+    std::atomic<bool> apvtsSyncDisabled_ { false };
+
     // MIDI CC → macro: written from the audio thread when a CC matches a macro.
     // A value of -1 means no pending update. Read and cleared at the top of
     // each processBlock before the APVTS sync so the CC value wins.
     std::array<std::atomic<float>, ST_MAX_MACROS> pendingMacroCC_;
+
+    // LFO depth values loaded from the most recent patch load.
+    // Written by applyStateData (message/audio thread), read by processBlock.
+    // The sentinel -2.0f means "no override active".  The override is applied
+    // on every block until resyncLFOParamsToAPVTS() clears it (~33 ms after
+    // patch load), ensuring the host's APVTS restore cannot zero out the depth.
+    static constexpr float kNoLFOOverride = -2.0f;
+    std::array<std::atomic<float>, ST_MAX_LFOS> pendingLFODepth_;
 
     // Modulation assignments (persisted alongside patch JSON)
     std::vector<ModAssignment> modAssignments_;

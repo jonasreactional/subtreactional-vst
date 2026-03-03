@@ -35,7 +35,7 @@ function rawToNorm(raw: number, def: ParamDef): number {
 
 const OSC_TYPES = ['Off', 'Saw', 'Square', 'Sine', 'Tri', 'Noise'];
 const FILTER_TYPES = ['Off', 'LP', 'HP', 'BP'];
-const FX_TYPES = ['Off', 'Delay', 'Chorus', 'Flanger', 'Phaser', 'VHS', 'Reverb', 'Distortion'];
+const FX_TYPES = ['Off', 'Delay', 'Chorus', 'Flanger', 'Phaser', 'VHS', 'Reverb', 'Distortion', 'EQ'];
 const PLAY_MODES = ['Poly', 'Mono', 'Legato'];
 const LFO_SHAPES = ['Sine', 'Tri', 'Saw', 'Square'];
 const VOICE_COUNTS = Array.from({ length: 16 }, (_, i) => String(i + 1)); // '1' to '16'
@@ -79,16 +79,17 @@ const PARAMS: ParamDef[] = [
   { id: 'aenv_decay',   label: 'Dec', min: 1, max: 5000, defaultValue: 200, skew: 0.25, type: 'slider' },
   { id: 'aenv_sustain', label: 'Sus', min: 0, max: 1,    defaultValue: 0.7, type: 'slider' },
   { id: 'aenv_release', label: 'Rel', min: 1, max: 5000, defaultValue: 500, skew: 0.25, type: 'slider' },
-  // FX slots — types: 0=Off,1=Delay,2=Chorus,3=Flanger,4=Phaser,5=VHS,6=Reverb,7=Distortion
+  // FX slots — types: 0=Off,1=Delay,2=Chorus,3=Flanger,4=Phaser,5=VHS,6=Reverb,7=Distortion,8=EQ
   ...([0, 1, 2, 3] as const).flatMap((i) => [
-    { id: `fx${i}_type`,             label: `FX${i} Type`,    min: 0, max: 7,    defaultValue: 0,    type: 'combo' as const, options: FX_TYPES },
+    { id: `fx${i}_type`,             label: `FX${i} Type`,    min: 0, max: 8,    defaultValue: 0,    type: 'combo' as const, options: FX_TYPES },
     { id: `fx${i}_mix`,              label: 'Mix',             min: 0, max: 1,    defaultValue: 0.3,  type: 'slider' as const },
     { id: `fx${i}_delay_time`,       label: 'Time',        min: 10, max: 1000, defaultValue: 250, type: 'slider' as const },
     { id: `fx${i}_delay_feedback`,   label: 'Fb',          min: 0, max: 0.99, defaultValue: 0.3,  type: 'slider' as const },
     { id: `fx${i}_chorus_rate`,      label: 'Rate',            min: 0.1, max: 10, defaultValue: 0.5,  type: 'slider' as const },
     { id: `fx${i}_chorus_depth`,     label: 'Dpth',           min: 0, max: 1,    defaultValue: 0.4,  type: 'slider' as const },
-    { id: `fx${i}_reverb_t60`,       label: 'T60',         min: 0.1, max: 10,    defaultValue: 2.0,    type: 'slider' as const },
-    { id: `fx${i}_reverb_damping`,   label: 'Damp',        min: 500, max: 20000, defaultValue: 6000.0, type: 'slider' as const },
+    { id: `fx${i}_reverb_t60`,        label: 'T60',       min: 0.1, max: 10,    defaultValue: 2.0,    type: 'slider' as const },
+    { id: `fx${i}_reverb_damping`,    label: 'Damp',      min: 500, max: 20000, defaultValue: 6000.0, type: 'slider' as const },
+    { id: `fx${i}_reverb_input_lpf`,  label: 'In LPF',    min: 100, max: 20000, defaultValue: 500, type: 'slider' as const },
     { id: `fx${i}_distortion_drive`, label: 'Drive',           min: 0, max: 10,   defaultValue: 1.0,  type: 'slider' as const },
     { id: `fx${i}_vhs_wow_rate`,     label: 'Wow',             min: 0.1, max: 5,  defaultValue: 0.35, type: 'slider' as const },
     { id: `fx${i}_vhs_wow_depth`,    label: 'Wow%',           min: 0, max: 1,    defaultValue: 0.25, type: 'slider' as const },
@@ -98,6 +99,11 @@ const PARAMS: ParamDef[] = [
     { id: `fx${i}_vhs_tone`,         label: 'Tone',            min: 0, max: 1,    defaultValue: 0.35, type: 'slider' as const },
     { id: `fx${i}_vhs_noise`,        label: 'Noise',           min: 0, max: 1,    defaultValue: 0.1,  type: 'slider' as const },
     { id: `fx${i}_vhs_dropout`,      label: 'Drop',            min: 0, max: 1,    defaultValue: 0.05, type: 'slider' as const },
+    { id: `fx${i}_eq_low_freq`,      label: 'Lo Hz',       min: 20,   max: 1000,  defaultValue: 300,  type: 'slider' as const },
+    { id: `fx${i}_eq_low_gain`,      label: 'Lo dB',       min: -24,  max: 12,    defaultValue: 0,    type: 'slider' as const },
+    { id: `fx${i}_eq_mid_gain`,      label: 'Mid dB',      min: -24,  max: 12,    defaultValue: 0,    type: 'slider' as const },
+    { id: `fx${i}_eq_high_freq`,     label: 'Hi Hz',       min: 1000, max: 20000, defaultValue: 5000, type: 'slider' as const },
+    { id: `fx${i}_eq_high_gain`,     label: 'Hi dB',       min: -24,  max: 12,    defaultValue: 0,    type: 'slider' as const },
   ]),
   // Master
   { id: 'master_volume',    label: 'Master',     min: 0, max: 1,    defaultValue: 0.8, type: 'slider' },
@@ -2605,10 +2611,19 @@ envRow.appendChild(makeAnalyzerPanel());
     reverbGroup.className = 'fx-param-group';
     reverbGroup.appendChild(buildKnob(`fx${i}_reverb_t60`, 26));
     reverbGroup.appendChild(buildKnob(`fx${i}_reverb_damping`, 26));
+    reverbGroup.appendChild(buildKnob(`fx${i}_reverb_input_lpf`, 26));
 
     const distortionGroup = document.createElement('div');
     distortionGroup.className = 'fx-param-group';
     distortionGroup.appendChild(buildKnob(`fx${i}_distortion_drive`, 26));
+
+    const eqGroup = document.createElement('div');
+    eqGroup.className = 'fx-param-group';
+    eqGroup.appendChild(buildKnob(`fx${i}_eq_low_freq`, 26));
+    eqGroup.appendChild(buildKnob(`fx${i}_eq_low_gain`, 26));
+    eqGroup.appendChild(buildKnob(`fx${i}_eq_mid_gain`, 26));
+    eqGroup.appendChild(buildKnob(`fx${i}_eq_high_freq`, 26));
+    eqGroup.appendChild(buildKnob(`fx${i}_eq_high_gain`, 26));
 
     // Create scrollable container for all param groups
     const paramsScroll = document.createElement('div');
@@ -2621,6 +2636,7 @@ envRow.appendChild(makeAnalyzerPanel());
     paramsScroll.appendChild(vhsGroup);
     paramsScroll.appendChild(reverbGroup);
     paramsScroll.appendChild(distortionGroup);
+    paramsScroll.appendChild(eqGroup);
 
     // Create placeholder knobs for OFF state (4 per row)
     const offPlaceholdersRow1 = document.createElement('div');
@@ -2653,7 +2669,7 @@ envRow.appendChild(makeAnalyzerPanel());
     bgLabel.className = 'fx-slot-bg-label';
     slot.appendChild(bgLabel);
 
-    // Types: 0=Off,1=Delay,2=Chorus,3=Flanger,4=Phaser,5=VHS,6=Reverb,7=Distortion
+    // Types: 0=Off,1=Delay,2=Chorus,3=Flanger,4=Phaser,5=VHS,6=Reverb,7=Distortion,8=EQ
     function updateFxVisibility(typeIndex: number) {
       const isOff = typeIndex === 0;
       mixKnob.style.display = isOff ? 'none' : '';
@@ -2664,6 +2680,7 @@ envRow.appendChild(makeAnalyzerPanel());
       vhsGroup.style.display        = typeIndex === 5 ? 'flex' : 'none';
       reverbGroup.style.display     = typeIndex === 6 ? 'flex' : 'none';
       distortionGroup.style.display = typeIndex === 7 ? 'flex' : 'none';
+      eqGroup.style.display         = typeIndex === 8 ? 'flex' : 'none';
       offPlaceholdersRow1.style.display = isOff ? 'flex' : 'none';
       offPlaceholdersRow2.style.display = isOff ? 'flex' : 'none';
       bgLabel.textContent = isOff ? '' : FX_TYPES[typeIndex];

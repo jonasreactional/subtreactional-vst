@@ -23,6 +23,9 @@ SubtreactionalAudioProcessorEditor::SubtreactionalAudioProcessorEditor (
         processor.apvts.addParameterListener (
             SubtreactionalAudioProcessor::kParams[i].apvtsId, this);
 
+    // play_mode is excluded from kParams[] but still needs to push UI updates
+    processor.apvts.addParameterListener ("play_mode", this);
+
     startTimerHz (30);
 
     setSize (1000, 530);
@@ -35,6 +38,8 @@ SubtreactionalAudioProcessorEditor::~SubtreactionalAudioProcessorEditor()
     for (int i = 0; i < SubtreactionalAudioProcessor::kNumParams; ++i)
         processor.apvts.removeParameterListener (
             SubtreactionalAudioProcessor::kParams[i].apvtsId, this);
+
+    processor.apvts.removeParameterListener ("play_mode", this);
 }
 
 //==============================================================================
@@ -95,6 +100,18 @@ void SubtreactionalAudioProcessorEditor::timerCallback()
             darkCover.setVisible (false);
     }
 
+    // If applyStateData ran on the audio thread since last tick (DAW project load,
+    // sample-rate change re-init, etc.), re-push mod assignments to JS.
+    if (processor.checkAndClearPatchLoaded())
+    {
+        bridge.pushModAssignments();
+        processor.resyncLFOParamsToAPVTS();
+    }
+
+    // Push LFO output unconditionally at 30 Hz so the LED pulse animates
+    // even when no audio is playing.
+    bridge.pushLFOValues (processor.getLFOOutput(), ST_MAX_LFOS);
+
     const int numRead = processor.popAnalyzerSamples (analysisReadBuffer.data(),
                                                       static_cast<int> (analysisReadBuffer.size()));
     if (numRead <= 0)
@@ -107,8 +124,6 @@ void SubtreactionalAudioProcessorEditor::timerCallback()
 
     if (buildSpectrogramFrame())
         bridge.pushSpectrogram (spectrogramFrame.data(), static_cast<int> (spectrogramFrame.size()));
-
-    bridge.pushLFOValues (processor.getLFOOutput(), ST_MAX_LFOS);
 }
 
 void SubtreactionalAudioProcessorEditor::appendAnalysisSamples (const float* samples, int numSamples)
