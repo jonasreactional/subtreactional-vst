@@ -14,13 +14,10 @@ jobs:
         include:
           - os: macos-latest
             name: macOS
-            cmake_flags: -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             name: Linux
-            cmake_flags: ""
           - os: windows-latest
             name: Windows
-            cmake_flags: ""
 
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
@@ -38,8 +35,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
+            pkg-config \
             libasound2-dev \
-            libfreetype6-dev \
+            libfreetype-dev \
             libx11-dev \
             libxrandr-dev \
             libxcursor-dev \
@@ -59,8 +57,21 @@ jobs:
           npm ci
           npm run build
 
-      - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_flags }}
+      - name: Configure (macOS)
+        if: runner.os == 'macOS'
+        run: >
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+          -DCMAKE_CXX_FLAGS="-Wno-error=return-type"
+          -DCMAKE_C_FLAGS="-Wno-error=return-type"
+
+      - name: Configure (Linux)
+        if: runner.os == 'Linux'
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         run: cmake --build build --config Release
