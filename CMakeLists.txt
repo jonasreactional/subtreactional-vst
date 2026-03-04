@@ -30,6 +30,18 @@ add_subdirectory(external/subtreactional)
 target_include_directories(subtreactional PRIVATE ${cjson_SOURCE_DIR})
 target_link_libraries(subtreactional PRIVATE cjson)
 
+# LEAF's CMakeLists uses GCC/Clang flags unconditionally; replace with
+# generator expressions so MSVC doesn't choke on -Wno-narrowing etc.
+if(TARGET LEAF)
+    get_target_property(_leaf_opts LEAF COMPILE_OPTIONS)
+    if(_leaf_opts)
+        set_target_properties(LEAF PROPERTIES COMPILE_OPTIONS "")
+    endif()
+    target_compile_options(LEAF PRIVATE
+        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-narrowing -w>
+    )
+endif()
+
 # BinaryData target for the web UI (Release builds).
 # Run `npm run build` inside web/ before configuring CMake in Release mode.
 # The file is optional at configure time so Debug builds (using the dev server)
