@@ -83,8 +83,16 @@ target_sources(SubtreactionalVST
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
         Source/JuceBridge.cpp
-        Source/NativeDarkCover.mm
 )
+
+# NativeDarkCover uses Obj-C++ on Apple; the header provides a pure-JUCE
+# fallback on other platforms, so we compile the .mm as C++ there.
+if(APPLE)
+    target_sources(SubtreactionalVST PRIVATE Source/NativeDarkCover.mm)
+else()
+    set_source_files_properties(Source/NativeDarkCover.mm PROPERTIES LANGUAGE CXX)
+    target_sources(SubtreactionalVST PRIVATE Source/NativeDarkCover.mm)
+endif()
 
 target_compile_definitions(SubtreactionalVST
     PUBLIC
