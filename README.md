@@ -2,6 +2,8 @@
 
 A VST3 synthesizer plugin built on the [subtreactional](https://github.com/jonasreactional/subtreactional) engine with a web-based UI.
 
+![subtreactional_screenshot](https://github.com/user-attachments/assets/a5edbb97-9fbf-4f01-8647-bf5801260df5)
+
 ## Features
 
 - Full subtractive synth: 2 oscillators, multimode filter, dual ADSR envelopes
