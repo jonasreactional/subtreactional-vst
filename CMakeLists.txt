@@ -90,6 +90,7 @@ juce_add_plugin(SubtreactionalVST
     NEEDS_MIDI_INPUT          TRUE
     NEEDS_MIDI_OUTPUT         FALSE
     IS_MIDI_EFFECT            FALSE
+    NEEDS_WEB_BROWSER         TRUE
     VST3_CATEGORIES           "Instrument|Synth"
 )
 
@@ -114,6 +115,8 @@ target_compile_definitions(SubtreactionalVST
         JUCE_WEB_BROWSER=1
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
+        JUCE_DISPLAY_SPLASH_SCREEN=0
+        JUCE_REPORT_APP_USAGE=0
 )
 
 target_link_libraries(SubtreactionalVST
