@@ -29,6 +29,15 @@ jobs:
           submodules: recursive
           ssh-key: ${{ secrets.SUBMODULE_SSH_KEY }}
 
+      # JUCE 7.0.12 uses CGWindowListCreateImage which was removed in macOS 15.
+      # Patch it out at build time (unused screenshot helpers).
+      - name: Patch JUCE for macOS 15
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cd external/JUCE
+          git apply ../../.github/patches/juce-remove-cgwindowlist.patch
+
       # Linux: install JUCE dependencies
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
