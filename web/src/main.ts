@@ -1127,20 +1127,21 @@ style.textContent = `
 
   /* ─── About modal ─────────────────────────────────────────── */
   .about-overlay {
+    display: none;
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.65);
-    display: flex;
     align-items: center;
     justify-content: center;
     z-index: 9000;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s, visibility 0.2s;
   }
   .about-overlay.open {
-    opacity: 1;
-    visibility: visible;
+    display: flex;
+    animation: about-fade-in 0.15s ease;
+  }
+  @keyframes about-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
   .about-modal {
     background: ${C.offDark2};
@@ -1154,11 +1155,6 @@ style.textContent = `
     padding: 28px 24px 24px;
     gap: 0;
     position: relative;
-    transform: translateY(8px);
-    transition: transform 0.2s;
-  }
-  .about-overlay.open .about-modal {
-    transform: translateY(0);
   }
   .about-close {
     position: absolute;
