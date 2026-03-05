@@ -36,6 +36,7 @@ interface JuceBridgeGlobal {
   onLFO(values: number[]): void;
   onModAssignments(assignments: ModAssignmentInfo[]): void;
   onPresets(presets: PresetInfo[]): void;
+  onVersion(version: string): void;
 }
 
 type Listener = (value: number) => void;
@@ -43,6 +44,7 @@ type AnalyzerListener = (values: number[]) => void;
 type LFOListener = (values: number[]) => void;
 type ModAssignmentsListener = (assignments: ModAssignmentInfo[]) => void;
 type PresetsListener = (presets: PresetInfo[]) => void;
+type VersionListener = (version: string) => void;
 
 const listeners = new Map<string, Set<Listener>>();
 const lastParamValues = new Map<string, number>();
@@ -52,6 +54,7 @@ const lfoListeners = new Set<LFOListener>();
 const modAssignmentsListeners = new Set<ModAssignmentsListener>();
 let lastModAssignments: ModAssignmentInfo[] | undefined;
 const presetsListeners = new Set<PresetsListener>();
+const versionListeners = new Set<VersionListener>();
 
 // Install the global that C++ will call
 window.__juce = {
@@ -74,6 +77,9 @@ window.__juce = {
   },
   onPresets(presets: PresetInfo[]) {
     presetsListeners.forEach((fn) => fn(presets));
+  },
+  onVersion(version: string) {
+    versionListeners.forEach((fn) => fn(version));
   },
 };
 
@@ -153,6 +159,12 @@ export function sendLoadFactoryPreset(idx: number): void {
 /** Load a user preset by file path */
 export function sendLoadUserPreset(path: string): void {
   window.location.href = `juce://preset_load_user?path=${encodeURIComponent(path)}`;
+}
+
+/** Subscribe to the plugin version string pushed from C++ on page load. */
+export function onVersion(fn: VersionListener): () => void {
+  versionListeners.add(fn);
+  return () => versionListeners.delete(fn);
 }
 
 /** Save current patch as a user preset */

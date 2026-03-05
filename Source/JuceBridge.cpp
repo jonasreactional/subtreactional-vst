@@ -308,6 +308,9 @@ bool JuceBridge::pageAboutToLoad (const juce::String& newURL)
 
 void JuceBridge::pageFinishedLoading (const juce::String& /*url*/)
 {
+    goToURL ("javascript:window.__juce && window.__juce.onVersion("
+             + juce::String (JucePlugin_VersionString).quoted() + ")");
+
     pushAllParams();
 
     if (onPageReady)

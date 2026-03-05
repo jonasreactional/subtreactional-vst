@@ -1,4 +1,4 @@
-import { setParam, onParam, onWaveform, onSpectrogram, onLFO, notifyHostReady, sendModAdd, sendModRemove, sendModSetDepth, onModAssignments, onPresets, sendLoadFactoryPreset, sendLoadUserPreset, sendSavePreset, type PresetInfo } from './bridge';
+import { setParam, onParam, onWaveform, onSpectrogram, onLFO, notifyHostReady, sendModAdd, sendModRemove, sendModSetDepth, onModAssignments, onPresets, onVersion, sendLoadFactoryPreset, sendLoadUserPreset, sendSavePreset, type PresetInfo } from './bridge';
 
 // ---------------------------------------------------------------------------
 // Parameter definitions — mirrors PluginProcessor.cpp kParams
@@ -244,12 +244,27 @@ style.textContent = `
     color: ${C.offWhite};
   }
 
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
   .header-accent {
     width: 6px;
     height: 6px;
     border-radius: 50%;
     background: ${C.purple};
     box-shadow: 0 0 8px ${C.purpleGlow};
+    flex-shrink: 0;
+  }
+
+  .header-version {
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    color: ${C.offDark5};
+    user-select: none;
   }
 
   /* ─── Preset selector (header center) ───────────────────── */
@@ -1591,12 +1606,23 @@ presetSaveBtn.className = 'preset-save-btn';
 presetSaveBtn.textContent = 'Save';
 presetSelector.appendChild(presetSaveBtn);
 
+const headerRight = document.createElement('div');
+headerRight.className = 'header-right';
+
 const headerAccent = document.createElement('div');
 headerAccent.className = 'header-accent';
 
+const headerVersion = document.createElement('span');
+headerVersion.className = 'header-version';
+
+headerRight.appendChild(headerAccent);
+headerRight.appendChild(headerVersion);
+
 header.appendChild(headerTitle);
 header.appendChild(presetSelector);
-header.appendChild(headerAccent);
+header.appendChild(headerRight);
+
+onVersion((v) => { headerVersion.textContent = `v${v}`; });
 app.appendChild(header);
 
 // Main layout
