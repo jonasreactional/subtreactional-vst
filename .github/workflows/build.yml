@@ -12,9 +12,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
+          - os: macos-latest
             name: macOS
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             name: Linux
           - os: windows-latest
             name: Windows
@@ -65,34 +65,15 @@ jobs:
           -DCMAKE_CXX_FLAGS="-Wno-error=return-type"
           -DCMAKE_C_FLAGS="-Wno-error=return-type"
 
-      - name: Configure (Linux)
-        if: runner.os == 'Linux'
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
-
-      - name: Configure (Windows)
-        if: runner.os == 'Windows'
+      - name: Configure (Linux/Windows)
+        if: runner.os != 'macOS'
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         run: cmake --build build --config Release
 
-      - name: Upload VST3 (macOS)
-        if: runner.os == 'macOS'
+      - name: Upload VST3
         uses: actions/upload-artifact@v4
         with:
-          name: Subtreactional-macOS-VST3
-          path: build/SubtreactionalVST_artefacts/Release/VST3/Subtreactional.vst3
-
-      - name: Upload VST3 (Linux)
-        if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: Subtreactional-Linux-VST3
-          path: build/SubtreactionalVST_artefacts/Release/VST3/Subtreactional.vst3
-
-      - name: Upload VST3 (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: Subtreactional-Windows-VST3
+          name: Subtreactional-${{ matrix.name }}-VST3
           path: build/SubtreactionalVST_artefacts/Release/VST3/Subtreactional.vst3
