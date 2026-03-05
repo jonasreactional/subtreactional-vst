@@ -55,6 +55,7 @@ const modAssignmentsListeners = new Set<ModAssignmentsListener>();
 let lastModAssignments: ModAssignmentInfo[] | undefined;
 const presetsListeners = new Set<PresetsListener>();
 const versionListeners = new Set<VersionListener>();
+let lastVersion: string | undefined;
 
 // Install the global that C++ will call
 window.__juce = {
@@ -79,6 +80,7 @@ window.__juce = {
     presetsListeners.forEach((fn) => fn(presets));
   },
   onVersion(version: string) {
+    lastVersion = version;
     versionListeners.forEach((fn) => fn(version));
   },
 };
@@ -161,9 +163,11 @@ export function sendLoadUserPreset(path: string): void {
   window.location.href = `juce://preset_load_user?path=${encodeURIComponent(path)}`;
 }
 
-/** Subscribe to the plugin version string pushed from C++ on page load. */
+/** Subscribe to the plugin version string pushed from C++ on page load.
+ *  If the version has already been received, the callback fires immediately. */
 export function onVersion(fn: VersionListener): () => void {
   versionListeners.add(fn);
+  if (lastVersion !== undefined) fn(lastVersion);
   return () => versionListeners.delete(fn);
 }
 

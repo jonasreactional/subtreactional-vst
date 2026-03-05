@@ -50,7 +50,7 @@ The release build embeds `web/dist/index.html` as binary data.
 
 ### Build & install (macOS)
 
-The `build.sh` script configures, builds, and copies the VST3 to `~/Library/Audio/Plug-Ins/VST3/`:
+The `build.sh` script configures, builds, and copies the VST3 to `/Library/Audio/Plug-Ins/VST3/` (requires sudo for the install step):
 
 ```bash
 ./build.sh           # Debug build
@@ -63,6 +63,37 @@ The built VST3 bundle is at:
 ```
 build/SubtreactionalVST_artefacts/<Debug|Release>/VST3/Subtreactional.vst3
 ```
+
+## Versioning & releasing
+
+The plugin version is defined in `CMakeLists.txt` and displayed in the plugin UI at runtime:
+
+```cmake
+project(SubtreactionalVST VERSION 0.1.0)
+```
+
+### Branch workflow
+
+- `develop` — day-to-day work
+- `main` — stable releases; every push triggers a CI build and produces downloadable artifacts
+
+### Cutting a release
+
+1. Bump the version in `CMakeLists.txt`
+2. Merge `develop` → `main`
+3. Tag the commit and push:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+CI will build for macOS, Linux, and Windows automatically on the `main` push.
+
+### Manual CI build
+
+Any branch can be built manually from the GitHub Actions UI:
+**Actions → Build → Run workflow** (select branch).
 
 ## Architecture
 

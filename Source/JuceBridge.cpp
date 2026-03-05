@@ -91,6 +91,9 @@ void JuceBridge::pushSpectrogram (const float* bins, int numBins)
 
 void JuceBridge::pushAllParams()
 {
+    goToURL ("javascript:window.__juce && window.__juce.onVersion("
+             + juce::String (JucePlugin_VersionString).quoted() + ")");
+
     for (int i = 0; i < SubtreactionalAudioProcessor::kNumParams; ++i)
     {
         const auto& p = SubtreactionalAudioProcessor::kParams[i];
@@ -308,9 +311,6 @@ bool JuceBridge::pageAboutToLoad (const juce::String& newURL)
 
 void JuceBridge::pageFinishedLoading (const juce::String& /*url*/)
 {
-    goToURL ("javascript:window.__juce && window.__juce.onVersion("
-             + juce::String (JucePlugin_VersionString).quoted() + ")");
-
     pushAllParams();
 
     if (onPageReady)
