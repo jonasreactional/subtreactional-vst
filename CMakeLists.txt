@@ -4,6 +4,30 @@ project(SubtreactionalVST VERSION 0.1.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Apply local JUCE patches before including the submodule.
+# Each patch is applied idempotently: skip if already applied (reverse-check passes).
+set(JUCE_DIR "${CMAKE_SOURCE_DIR}/external/JUCE")
+file(GLOB JUCE_PATCHES "${CMAKE_SOURCE_DIR}/patches/juce_*.patch")
+foreach(PATCH_FILE ${JUCE_PATCHES})
+    execute_process(
+        COMMAND git apply --check --reverse "${PATCH_FILE}"
+        WORKING_DIRECTORY "${JUCE_DIR}"
+        RESULT_VARIABLE _already_applied
+        OUTPUT_QUIET ERROR_QUIET
+    )
+    if(NOT _already_applied EQUAL 0)
+        message(STATUS "Applying JUCE patch: ${PATCH_FILE}")
+        execute_process(
+            COMMAND git apply "${PATCH_FILE}"
+            WORKING_DIRECTORY "${JUCE_DIR}"
+            RESULT_VARIABLE _apply_result
+        )
+        if(NOT _apply_result EQUAL 0)
+            message(FATAL_ERROR "Failed to apply JUCE patch: ${PATCH_FILE}")
+        endif()
+    endif()
+endforeach()
+
 # JUCE submodule
 add_subdirectory(external/JUCE)
 

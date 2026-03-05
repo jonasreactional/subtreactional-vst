@@ -1,0 +1,78 @@
+diff --git a/modules/juce_gui_extra/native/juce_WebBrowserComponent_mac.mm b/modules/juce_gui_extra/native/juce_WebBrowserComponent_mac.mm
+index aad295d8fd..de0ec49b0e 100644
+--- a/modules/juce_gui_extra/native/juce_WebBrowserComponent_mac.mm
++++ b/modules/juce_gui_extra/native/juce_WebBrowserComponent_mac.mm
+@@ -496,19 +496,70 @@ void mouseMove (const MouseEvent&)
+ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
+ #endif
+ 
++} // namespace juce
++
++// Minimal WKURLSchemeHandler that absorbs all juce:// URLs internally.
++// Without this, macOS tries to open unrecognised URL schemes with a system
++// app and shows an "no application set to open" alert.
++// Must be outside namespace juce{} as ObjC declarations require global scope.
++API_AVAILABLE (macos (10.13))
++@interface JuceURLSchemeHandler : NSObject <WKURLSchemeHandler>
++@end
++@implementation JuceURLSchemeHandler
++- (void) webView: (WKWebView*) webView startURLSchemeTask: (id<WKURLSchemeTask>) task
++{
++    NSURLResponse* r = [[NSURLResponse alloc] initWithURL: task.request.URL
++                                                 MIMEType: @"text/plain"
++                                    expectedContentLength: 0
++                                         textEncodingName: nil];
++    [task didReceiveResponse: r];
++    [task didFinish];
++}
++- (void) webView: (WKWebView*) webView stopURLSchemeTask: (id<WKURLSchemeTask>) task {}
++@end
++
++namespace juce
++{
++
+ class API_AVAILABLE (macos (10.11)) WKWebViewImpl : public WebViewBase
+ {
+ public:
+     WKWebViewImpl (WebBrowserComponent* owner, const String& userAgent)
+     {
++        // Build a WKWebViewConfiguration with a user script that sets the
++        // background colour at document-start, before any pixel is rendered.
++        // This eliminates the white flash that occurs during navigation.
++        WKWebViewConfiguration* config = [[WKWebViewConfiguration alloc] init];
++
++        // Register the juce:// scheme so macOS never tries to open it with a
++        // system app — prevents the "no application set to open" alert.
++        if (@available (macOS 10.13, *))
++            [config setURLSchemeHandler: [[JuceURLSchemeHandler alloc] init]
++                           forURLScheme: @"juce"];
++
++        WKUserContentController* ucc = [[WKUserContentController alloc] init];
++        WKUserScript* bgScript = [[WKUserScript alloc]
++            initWithSource: @"document.documentElement.style.setProperty('background','#121212','important');"
++             injectionTime: WKUserScriptInjectionTimeAtDocumentStart
++          forMainFrameOnly: YES];
++        [ucc addUserScript: bgScript];
++        config.userContentController = ucc;
++
+        #if JUCE_MAC
+         static WebViewKeyEquivalentResponder<WKWebView> webviewClass;
+-
+-        webView.reset ([webviewClass.createInstance() initWithFrame: NSMakeRect (0, 0, 100.0f, 100.0f)]);
++        webView.reset ([webviewClass.createInstance() initWithFrame: NSMakeRect (0, 0, 100.0f, 100.0f)
++                                                      configuration: config]);
+        #else
+-        webView.reset ([[WKWebView alloc] initWithFrame: CGRectMake (0, 0, 100.0f, 100.0f)]);
++        webView.reset ([[WKWebView alloc] initWithFrame: CGRectMake (0, 0, 100.0f, 100.0f)
++                                          configuration: config]);
+        #endif
+ 
++        // Make the webview itself transparent so the CALayer background shows
++        // through for the brief moment before the user script fires.
++        [webView.get() setValue: @(NO) forKey: @"drawsBackground"];
++        [webView.get() setWantsLayer: YES];
++        webView.get().layer.backgroundColor = CGColorCreateSRGB (18.0 / 255.0, 18.0 / 255.0, 18.0 / 255.0, 1.0);
++
+         if (userAgent.isNotEmpty())
+             webView.get().customUserAgent = juceStringToNS (userAgent);
+ 
