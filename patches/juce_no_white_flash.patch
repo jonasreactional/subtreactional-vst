@@ -1,40 +1,14 @@
 diff --git a/modules/juce_gui_extra/native/juce_WebBrowserComponent_mac.mm b/modules/juce_gui_extra/native/juce_WebBrowserComponent_mac.mm
-index aad295d8fd..ac0bce09a3 100644
+index aad295d8fd..990ff8d122 100644
 --- a/modules/juce_gui_extra/native/juce_WebBrowserComponent_mac.mm
 +++ b/modules/juce_gui_extra/native/juce_WebBrowserComponent_mac.mm
-@@ -501,14 +501,36 @@ class API_AVAILABLE (macos (10.11)) WKWebViewImpl : public WebViewBase
- public:
-     WKWebViewImpl (WebBrowserComponent* owner, const String& userAgent)
-     {
-+        // Inject a user script that sets the background colour at document-start,
-+        // before any pixel is rendered — eliminates the white flash on load.
-+        // NOTE: Do NOT register a WKURLSchemeHandler for "juce://" here.
-+        // JUCE uses window.location.href = 'juce://...' for its native bridge;
-+        // a registered scheme handler would intercept those navigations and serve
-+        // empty responses instead, breaking page load (visible as a black screen).
-+        WKWebViewConfiguration* config = [[WKWebViewConfiguration alloc] init];
-+        WKUserContentController* ucc   = [[WKUserContentController alloc] init];
-+        WKUserScript* bgScript = [[WKUserScript alloc]
-+            initWithSource: @"document.documentElement.style.setProperty('background','#121212','important');"
-+             injectionTime: WKUserScriptInjectionTimeAtDocumentStart
-+          forMainFrameOnly: YES];
-+        [ucc addUserScript: bgScript];
-+        config.userContentController = ucc;
-+
-        #if JUCE_MAC
-         static WebViewKeyEquivalentResponder<WKWebView> webviewClass;
--
--        webView.reset ([webviewClass.createInstance() initWithFrame: NSMakeRect (0, 0, 100.0f, 100.0f)]);
-+        webView.reset ([webviewClass.createInstance() initWithFrame: NSMakeRect (0, 0, 100.0f, 100.0f)
-+                                                      configuration: config]);
-        #else
--        webView.reset ([[WKWebView alloc] initWithFrame: CGRectMake (0, 0, 100.0f, 100.0f)]);
-+        webView.reset ([[WKWebView alloc] initWithFrame: CGRectMake (0, 0, 100.0f, 100.0f)
-+                                          configuration: config]);
+@@ -509,6 +509,13 @@ class API_AVAILABLE (macos (10.11)) WKWebViewImpl : public WebViewBase
+         webView.reset ([[WKWebView alloc] initWithFrame: CGRectMake (0, 0, 100.0f, 100.0f)]);
         #endif
  
-+        // Make the webview transparent so the dark CALayer behind it shows
-+        // through for the brief moment before the user script fires.
++        // Prevent the white flash before page content renders.
++        // Setting drawsBackground:NO makes the view transparent so the dark
++        // CALayer behind it is visible during load instead of the default white.
 +        [webView.get() setValue: @(NO) forKey: @"drawsBackground"];
 +        [webView.get() setWantsLayer: YES];
 +        webView.get().layer.backgroundColor = CGColorCreateSRGB (18.0 / 255.0, 18.0 / 255.0, 18.0 / 255.0, 1.0);
