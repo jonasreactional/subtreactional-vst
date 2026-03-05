@@ -49,6 +49,20 @@ void SubtreactionalAudioProcessorEditor::resized()
     darkCover.setBounds (getLocalBounds());
 }
 
+void SubtreactionalAudioProcessorEditor::visibilityChanged()
+{
+    if (! isVisible())
+        return;
+
+    // Some hosts (e.g. Bitwig) don't trigger an initial paint on the WKWebView
+    // until the plugin window receives a resize/visibility event.  Forcing a
+    // zero-height then full-height bounds change replicates what a manual
+    // hide-then-show does and makes the content appear immediately.
+    auto b = getLocalBounds();
+    bridge.setBounds (b.withHeight (0));
+    bridge.setBounds (b);
+}
+
 //==============================================================================
 bool SubtreactionalAudioProcessorEditor::isInterestedInFileDrag (const juce::StringArray& files)
 {

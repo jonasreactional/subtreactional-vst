@@ -18,8 +18,9 @@ public:
     explicit SubtreactionalAudioProcessorEditor (SubtreactionalAudioProcessor&);
     ~SubtreactionalAudioProcessorEditor() override;
 
-    void paint   (juce::Graphics& g) override { g.fillAll (juce::Colour (0xff121212)); }
-    void resized () override;
+    void paint             (juce::Graphics& g) override { g.fillAll (juce::Colour (0xff121212)); }
+    void resized           () override;
+    void visibilityChanged () override;
 
     // Consume all key events so the host never intercepts typing in the WebView
     bool keyPressed      (const juce::KeyPress&) override { return true; }
