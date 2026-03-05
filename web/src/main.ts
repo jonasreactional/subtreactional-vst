@@ -1,4 +1,5 @@
 import { setParam, onParam, onWaveform, onSpectrogram, onLFO, notifyHostReady, sendModAdd, sendModRemove, sendModSetDepth, onModAssignments, onPresets, onVersion, onPresetSaved, openNativeSaveDialog, sendLoadFactoryPreset, sendLoadUserPreset, sendSavePreset, type PresetInfo } from './bridge';
+import jonasPhotoUrl from './jonas.jpeg';
 
 // ---------------------------------------------------------------------------
 // Parameter definitions — mirrors PluginProcessor.cpp kParams
@@ -256,15 +257,6 @@ style.textContent = `
     display: flex;
     align-items: center;
     gap: 7px;
-  }
-
-  .header-accent {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: ${C.purple};
-    box-shadow: 0 0 8px ${C.purpleGlow};
-    flex-shrink: 0;
   }
 
   .header-version {
@@ -1106,7 +1098,132 @@ style.textContent = `
     opacity: 1;
     visibility: visible;
   }
+
+  /* ─── About button (header) ──────────────────────────────── */
+  .about-btn {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    overflow: hidden;
+    flex-shrink: 0;
+    opacity: 0.75;
+    transition: opacity 0.15s, box-shadow 0.15s;
+    box-shadow: 0 0 0 1.5px ${C.offDark5};
+  }
+  .about-btn:hover {
+    opacity: 1;
+    box-shadow: 0 0 0 1.5px ${C.purple}, 0 0 8px ${C.purpleGlow};
+  }
+  .about-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+  }
+
+  /* ─── About modal ─────────────────────────────────────────── */
+  .about-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+  }
+  .about-overlay.open {
+    opacity: 1;
+    visibility: visible;
+  }
+  .about-modal {
+    background: ${C.offDark2};
+    border: 1px solid ${C.offDark4};
+    border-radius: 12px;
+    width: 300px;
+    box-shadow: 0 16px 60px rgba(0,0,0,0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 24px 24px;
+    gap: 0;
+    position: relative;
+    transform: translateY(8px);
+    transition: transform 0.2s;
+  }
+  .about-overlay.open .about-modal {
+    transform: translateY(0);
+  }
+  .about-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: ${C.white48};
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 4px;
+  }
+  .about-close:hover { color: ${C.offWhite}; }
+
+  .about-photo {
+    width: 50px;
+    height: 50px;
+    border-radius: 20%;
+    object-fit: cover;
+    display: block;
+    box-shadow: 0 0 0 2px ${C.offDark4}, 0 0 20px ${C.purpleGlow};
+    margin-bottom: 14px;
+  }
+  .about-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: ${C.offWhite};
+    margin-bottom: 3px;
+    text-align: center;
+  }
+  .about-love {
+    font-size: 11px;
+    color: ${C.white48};
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .about-divider {
+    width: 100%;
+    height: 1px;
+    background: ${C.offDark4};
+    margin-bottom: 16px;
+  }
+  .about-section-title {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: ${C.purple};
+    margin-bottom: 8px;
+    align-self: flex-start;
+  }
+  .about-body {
+    font-size: 11px;
+    line-height: 1.6;
+    color: ${C.white48};
+    text-align: left;
+    width: 100%;
+  }
+  .about-body strong {
+    color: ${C.offWhite};
+    font-weight: 500;
+  }
 `;
+
 document.head.appendChild(style);
 
 // ---------------------------------------------------------------------------
@@ -1654,14 +1771,19 @@ presetSelector.appendChild(presetSaveBtn);
 const headerRight = document.createElement('div');
 headerRight.className = 'header-right';
 
-const headerAccent = document.createElement('div');
-headerAccent.className = 'header-accent';
-
 const headerVersion = document.createElement('span');
 headerVersion.className = 'header-version';
 
-headerRight.appendChild(headerAccent);
+const aboutBtn = document.createElement('button');
+aboutBtn.className = 'about-btn';
+aboutBtn.setAttribute('data-tooltip', 'About');
+const aboutBtnImg = document.createElement('img');
+aboutBtnImg.src = jonasPhotoUrl;
+aboutBtnImg.alt = 'Jonas Kjellberg';
+aboutBtn.appendChild(aboutBtnImg);
+
 headerRight.appendChild(headerVersion);
+headerRight.appendChild(aboutBtn);
 
 header.appendChild(headerTitle);
 header.appendChild(presetSelector);
@@ -1669,6 +1791,55 @@ header.appendChild(headerRight);
 
 onVersion((v) => { headerVersion.textContent = `v${v}`; });
 app.appendChild(header);
+
+// ── About modal ──────────────────────────────────────────────────────────────
+const aboutOverlay = document.createElement('div');
+aboutOverlay.className = 'about-overlay';
+
+const aboutModal = document.createElement('div');
+aboutModal.className = 'about-modal';
+
+const aboutClose = document.createElement('button');
+aboutClose.className = 'about-close';
+aboutClose.textContent = '×';
+
+const aboutPhoto = document.createElement('img');
+aboutPhoto.className = 'about-photo';
+aboutPhoto.src = jonasPhotoUrl;
+aboutPhoto.alt = 'Jonas Kjellberg';
+
+const aboutLove = document.createElement('div');
+aboutLove.className = 'about-love';
+aboutLove.textContent = 'Made with love and delirium in Göteborg, Sweden, by Jonas Kjellberg and Reactional Music.';
+
+const aboutDivider = document.createElement('div');
+aboutDivider.className = 'about-divider';
+
+const aboutSectionTitle = document.createElement('div');
+aboutSectionTitle.className = 'about-section-title';
+aboutSectionTitle.textContent = 'Use in Unity & Unreal';
+
+const aboutBody = document.createElement('div');
+aboutBody.className = 'about-body';
+aboutBody.innerHTML = `
+  Import a DAW session containing this synth into <strong>Reactional Composer</strong> to use it as an adaptive music instrument inside <strong>Unity</strong> and <strong>Unreal Engine</strong>.<br><br>
+`;
+
+aboutModal.appendChild(aboutClose);
+aboutModal.appendChild(aboutLove);
+aboutModal.appendChild(aboutPhoto);
+
+aboutModal.appendChild(aboutDivider);
+aboutModal.appendChild(aboutSectionTitle);
+aboutModal.appendChild(aboutBody);
+aboutOverlay.appendChild(aboutModal);
+document.body.appendChild(aboutOverlay);
+
+aboutBtn.addEventListener('click', () => aboutOverlay.classList.add('open'));
+aboutClose.addEventListener('click', () => aboutOverlay.classList.remove('open'));
+aboutOverlay.addEventListener('click', (e) => {
+  if (e.target === aboutOverlay) aboutOverlay.classList.remove('open');
+});
 
 // Main layout
 const mainLayout = document.createElement('div');

@@ -38,7 +38,7 @@ interface JuceBridgeGlobal {
   onModAssignments(assignments: ModAssignmentInfo[]): void;
   onPresets(presets: PresetInfo[]): void;
   onVersion(version: string): void;
-  onPresetSaved(name: string): void;
+  onPresetSaved(name: string, pack: string, category: string): void;
 }
 
 type Listener = (value: number) => void;
