@@ -39,16 +39,36 @@ static juce::String makeNumericArrayLiteral (const float* values, int numValues)
 JuceBridge::JuceBridge (SubtreactionalAudioProcessor& p)
     : WebBrowserComponent (makeBrowserOptions()), processor (p)
 {
+    // Page load is deferred to parentHierarchyChanged() so that WKWebView
+    // always has a real window when it starts rendering.  Loading here
+    // (before addAndMakeVisible) causes WKWebView to initialise without a
+    // window, which makes some hosts (e.g. Bitwig) show a blank screen.
+}
+
+void JuceBridge::loadInitialPage()
+{
 #if JUCE_DEBUG
     goToURL ("http://localhost:5173");
 #else
-    // Write the embedded HTML to a temp file and load it via file://
-    // juce::File has no getURL(); construct juce::URL from the File instead.
     auto tmp = juce::File::getSpecialLocation (juce::File::tempDirectory)
                    .getChildFile ("subtreactional_ui.html");
     tmp.replaceWithData (BinaryData::index_html, BinaryData::index_htmlSize);
     goToURL (juce::URL (tmp).toString (false));
 #endif
+}
+
+void JuceBridge::parentHierarchyChanged()
+{
+    WebBrowserComponent::parentHierarchyChanged();
+
+    // Load the page the first time the component is in a showing window.
+    // isShowing() is true only when the component has a peer and is visible —
+    // i.e. WKWebView will have a real NSWindow to render into.
+    if (! pageLoadStarted_ && isShowing())
+    {
+        pageLoadStarted_ = true;
+        loadInitialPage();
+    }
 }
 
 //==============================================================================

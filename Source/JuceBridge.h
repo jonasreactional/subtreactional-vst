@@ -96,12 +96,16 @@ public:
 
     //==========================================================================
     // WebBrowserComponent overrides
-    bool pageAboutToLoad  (const juce::String& newURL) override;
-    void pageFinishedLoading (const juce::String& url) override;
+    bool pageAboutToLoad      (const juce::String& newURL) override;
+    void pageFinishedLoading  (const juce::String& url)    override;
+    void parentHierarchyChanged()                          override;
 
 private:
+    void loadInitialPage();
+
     SubtreactionalAudioProcessor& processor;
     DarkAlertLookAndFeel darkLAF;
+    bool pageLoadStarted_ = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (JuceBridge)
 };
