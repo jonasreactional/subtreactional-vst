@@ -389,13 +389,18 @@ style.textContent = `
     overflow-y: auto;
     flex-shrink: 0;
   }
-  .preset-pack-header {
-    display: block;
+  .preset-pack-row {
+    display: flex;
+    align-items: center;
     width: 100%;
+  }
+  .preset-pack-name {
+    flex: 1;
+    min-width: 0;
     text-align: left;
     background: none;
     border: none;
-    padding: 8px 10px 3px;
+    padding: 8px 4px 3px 10px;
     font-size: 9px;
     font-family: 'Inter', system-ui, sans-serif;
     font-weight: 600;
@@ -404,9 +409,23 @@ style.textContent = `
     color: ${C.offDark5};
     cursor: pointer;
     transition: color 0.1s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .preset-pack-header:hover { color: ${C.offWhite}; }
-  .preset-pack-header.active { color: ${C.purple}; }
+  .preset-pack-name:hover { color: ${C.offWhite}; }
+  .preset-pack-name.active { color: ${C.purple}; }
+  .preset-pack-chevron {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: ${C.offDark5};
+    cursor: pointer;
+    font-size: 8px;
+    padding: 8px 8px 3px 2px;
+    transition: color 0.1s;
+  }
+  .preset-pack-chevron:hover { color: ${C.offWhite}; }
   .preset-cat-btn {
     display: block;
     width: 100%;
@@ -2987,17 +3006,41 @@ function openPresetModal() {
   const listPane = document.createElement('div');
   listPane.className = 'preset-list';
 
-  // Active filter: null pack = All, non-null = specific pack+category
-  let activePack: string | null = null;
-  let activeCategory: string | null = null;
+  // Filter state using discriminated union
+  type Filter =
+    | { kind: 'all' }
+    | { kind: 'allCat'; cat: string }
+    | { kind: 'pack'; pack: string }
+    | { kind: 'packCat'; pack: string; cat: string };
+
+  let filter: Filter = { kind: 'all' };
+
+  // Collapse state
+  let allCatsExpanded = false;
+  const collapsedPacks = new Set<string>();
+
+  // Collect packs in order of first occurrence
+  const seenPacks: string[] = [];
+  for (const p of allPresets) {
+    const pk = p.pack || '';
+    if (!seenPacks.includes(pk)) seenPacks.push(pk);
+  }
 
   function renderList() {
     listPane.innerHTML = '';
-    const filtered = (activePack === null)
-      ? allPresets
-      : (activeCategory === null)
-        ? allPresets.filter((p) => p.pack === activePack)
-        : allPresets.filter((p) => p.pack === activePack && p.category === activeCategory);
+    let filtered: typeof allPresets;
+    if (filter.kind === 'all') {
+      filtered = allPresets;
+    } else if (filter.kind === 'allCat') {
+      const cat = filter.cat;
+      filtered = allPresets.filter((p) => (p.category || '') === cat);
+    } else if (filter.kind === 'pack') {
+      const pack = filter.pack;
+      filtered = allPresets.filter((p) => (p.pack || '') === pack);
+    } else {
+      const { pack, cat } = filter;
+      filtered = allPresets.filter((p) => (p.pack || '') === pack && (p.category || '') === cat);
+    }
 
     filtered.forEach((preset) => {
       const item = document.createElement('div');
@@ -3045,63 +3088,91 @@ function openPresetModal() {
     });
   }
 
-  function setActive(pack: string | null, category: string | null) {
-    activePack     = pack;
-    activeCategory = category;
-    // Update sidebar button states
-    catSidebar.querySelectorAll('.preset-pack-header').forEach((el) => {
-      const btn = el as HTMLButtonElement;
-      const isActive = pack !== null && btn.dataset.pack === pack && category === null;
-      btn.classList.toggle('active', isActive);
-    });
-    catSidebar.querySelectorAll('.preset-cat-btn').forEach((el) => {
-      const btn = el as HTMLButtonElement;
-      btn.classList.toggle('active',
-        pack !== null && btn.dataset.pack === pack && btn.dataset.cat === category);
-    });
-    renderList();
-  }
+  function renderSidebar() {
+    catSidebar.innerHTML = '';
 
-  // Build sidebar: "All" + pack sections
-  const allBtn = document.createElement('button');
-  allBtn.className = 'preset-cat-btn active';
-  allBtn.textContent = 'All';
-  allBtn.addEventListener('click', () => setActive(null, null));
-  catSidebar.appendChild(allBtn);
+    // --- "All" row ---
+    const allRow = document.createElement('div');
+    allRow.className = 'preset-pack-row';
 
-  // Collect packs in order, preserving first occurrence
-  const seenPacks: string[] = [];
-  for (const p of allPresets) {
-    const pk = p.pack || '';
-    if (!seenPacks.includes(pk)) seenPacks.push(pk);
-  }
+    const allName = document.createElement('button');
+    allName.className = 'preset-pack-name' + (filter.kind === 'all' ? ' active' : '');
+    allName.textContent = 'All';
+    allName.addEventListener('click', () => { filter = { kind: 'all' }; renderSidebar(); renderList(); });
 
-  for (const pack of seenPacks) {
-    const packHeader = document.createElement('button');
-    packHeader.className = 'preset-pack-header';
-    packHeader.textContent = pack || 'Unsorted';
-    packHeader.dataset.pack = pack;
-    packHeader.addEventListener('click', () => setActive(pack, null));
-    catSidebar.appendChild(packHeader);
+    const allChevron = document.createElement('button');
+    allChevron.className = 'preset-pack-chevron';
+    allChevron.textContent = allCatsExpanded ? '▼' : '▶';
+    allChevron.addEventListener('click', () => { allCatsExpanded = !allCatsExpanded; renderSidebar(); });
 
-    // Categories within this pack
-    const cats: string[] = [];
-    for (const p of allPresets) {
-      if ((p.pack || '') === pack && p.category && !cats.includes(p.category)) {
-        cats.push(p.category);
+    allRow.appendChild(allName);
+    allRow.appendChild(allChevron);
+    catSidebar.appendChild(allRow);
+
+    if (allCatsExpanded) {
+      // All unique categories across all packs
+      const allCats: string[] = [];
+      for (const p of allPresets) {
+        if (p.category && !allCats.includes(p.category)) allCats.push(p.category);
+      }
+      for (const cat of allCats.sort()) {
+        const btn = document.createElement('button');
+        const isActive = filter.kind === 'allCat' && filter.cat === cat;
+        btn.className = 'preset-cat-btn' + (isActive ? ' active' : '');
+        btn.textContent = cat;
+        btn.addEventListener('click', () => { filter = { kind: 'allCat', cat }; renderSidebar(); renderList(); });
+        catSidebar.appendChild(btn);
       }
     }
-    for (const cat of cats.sort()) {
-      const btn = document.createElement('button');
-      btn.className = 'preset-cat-btn';
-      btn.textContent = cat;
-      btn.dataset.pack = pack;
-      btn.dataset.cat  = cat;
-      btn.addEventListener('click', () => setActive(pack, cat));
-      catSidebar.appendChild(btn);
+
+    // --- Pack sections ---
+    for (const pack of seenPacks) {
+      const packRow = document.createElement('div');
+      packRow.className = 'preset-pack-row';
+
+      const isPackActive = (filter.kind === 'pack' || filter.kind === 'packCat') && filter.pack === pack;
+      const packName = document.createElement('button');
+      packName.className = 'preset-pack-name' + (isPackActive ? ' active' : '');
+      packName.textContent = pack || 'Unsorted';
+      packName.addEventListener('click', () => {
+        collapsedPacks.delete(pack); // expand on select
+        filter = { kind: 'pack', pack };
+        renderSidebar();
+        renderList();
+      });
+
+      const isCollapsed = collapsedPacks.has(pack);
+      const packChevron = document.createElement('button');
+      packChevron.className = 'preset-pack-chevron';
+      packChevron.textContent = isCollapsed ? '▶' : '▼';
+      packChevron.addEventListener('click', () => {
+        if (isCollapsed) collapsedPacks.delete(pack);
+        else collapsedPacks.add(pack);
+        renderSidebar();
+      });
+
+      packRow.appendChild(packName);
+      packRow.appendChild(packChevron);
+      catSidebar.appendChild(packRow);
+
+      if (!isCollapsed) {
+        const cats: string[] = [];
+        for (const p of allPresets) {
+          if ((p.pack || '') === pack && p.category && !cats.includes(p.category)) cats.push(p.category);
+        }
+        for (const cat of cats.sort()) {
+          const btn = document.createElement('button');
+          const isActive = filter.kind === 'packCat' && filter.pack === pack && filter.cat === cat;
+          btn.className = 'preset-cat-btn' + (isActive ? ' active' : '');
+          btn.textContent = cat;
+          btn.addEventListener('click', () => { filter = { kind: 'packCat', pack, cat }; renderSidebar(); renderList(); });
+          catSidebar.appendChild(btn);
+        }
+      }
     }
   }
 
+  renderSidebar();
   renderList();
 
   body.appendChild(catSidebar);
