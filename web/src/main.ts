@@ -1,4 +1,4 @@
-import { setParam, onParam, onWaveform, onSpectrogram, onLFO, notifyHostReady, sendModAdd, sendModRemove, sendModSetDepth, onModAssignments, onPresets, onVersion, sendLoadFactoryPreset, sendLoadUserPreset, sendSavePreset, type PresetInfo } from './bridge';
+import { setParam, onParam, onWaveform, onSpectrogram, onLFO, notifyHostReady, sendModAdd, sendModRemove, sendModSetDepth, onModAssignments, onPresets, onVersion, onPresetSaved, openNativeSaveDialog, sendLoadFactoryPreset, sendLoadUserPreset, sendSavePreset, type PresetInfo } from './bridge';
 
 // ---------------------------------------------------------------------------
 // Parameter definitions — mirrors PluginProcessor.cpp kParams
@@ -383,19 +383,37 @@ style.textContent = `
   }
 
   .preset-categories {
-    width: 90px;
+    width: 120px;
     border-right: 1px solid ${C.offDark4};
     padding: 6px 0;
     overflow-y: auto;
     flex-shrink: 0;
   }
+  .preset-pack-header {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 8px 10px 3px;
+    font-size: 9px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: ${C.offDark5};
+    cursor: pointer;
+    transition: color 0.1s;
+  }
+  .preset-pack-header:hover { color: ${C.offWhite}; }
+  .preset-pack-header.active { color: ${C.purple}; }
   .preset-cat-btn {
     display: block;
     width: 100%;
     text-align: left;
     background: none;
     border: none;
-    padding: 6px 12px;
+    padding: 4px 10px 4px 18px;
     font-size: 11px;
     font-family: 'Inter', system-ui, sans-serif;
     color: ${C.white48};
@@ -2926,6 +2944,8 @@ notifyHostReady();
 
 let allPresets: PresetInfo[] = [];
 let currentPresetName = 'Init';
+let currentPresetPack = '';
+let currentPresetCategory = '';
 
 function updatePresetNameBtn() {
   presetNameBtn.textContent = currentPresetName;
@@ -2961,21 +2981,23 @@ function openPresetModal() {
   const body = document.createElement('div');
   body.className = 'preset-modal-body';
 
-  // Category sidebar
   const catSidebar = document.createElement('div');
   catSidebar.className = 'preset-categories';
 
   const listPane = document.createElement('div');
   listPane.className = 'preset-list';
 
-  const categories = ['All', ...Array.from(new Set(allPresets.map((p) => p.category))).sort()];
-  let activeCategory = 'All';
+  // Active filter: null pack = All, non-null = specific pack+category
+  let activePack: string | null = null;
+  let activeCategory: string | null = null;
 
   function renderList() {
     listPane.innerHTML = '';
-    const filtered = activeCategory === 'All'
+    const filtered = (activePack === null)
       ? allPresets
-      : allPresets.filter((p) => p.category === activeCategory);
+      : (activeCategory === null)
+        ? allPresets.filter((p) => p.pack === activePack)
+        : allPresets.filter((p) => p.pack === activePack && p.category === activeCategory);
 
     filtered.forEach((preset) => {
       const item = document.createElement('div');
@@ -3012,7 +3034,9 @@ function openPresetModal() {
         } else if (preset.source === 'user' && preset.path) {
           sendLoadUserPreset(preset.path);
         }
-        currentPresetName = preset.name;
+        currentPresetName     = preset.name;
+        currentPresetPack     = preset.pack ?? '';
+        currentPresetCategory = preset.category ?? '';
         updatePresetNameBtn();
         overlay.remove();
       });
@@ -3021,18 +3045,62 @@ function openPresetModal() {
     });
   }
 
-  categories.forEach((cat) => {
-    const btn = document.createElement('button');
-    btn.className = 'preset-cat-btn' + (cat === activeCategory ? ' active' : '');
-    btn.textContent = cat;
-    btn.addEventListener('click', () => {
-      activeCategory = cat;
-      catSidebar.querySelectorAll('.preset-cat-btn').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderList();
+  function setActive(pack: string | null, category: string | null) {
+    activePack     = pack;
+    activeCategory = category;
+    // Update sidebar button states
+    catSidebar.querySelectorAll('.preset-pack-header').forEach((el) => {
+      const btn = el as HTMLButtonElement;
+      const isActive = pack !== null && btn.dataset.pack === pack && category === null;
+      btn.classList.toggle('active', isActive);
     });
-    catSidebar.appendChild(btn);
-  });
+    catSidebar.querySelectorAll('.preset-cat-btn').forEach((el) => {
+      const btn = el as HTMLButtonElement;
+      btn.classList.toggle('active',
+        pack !== null && btn.dataset.pack === pack && btn.dataset.cat === category);
+    });
+    renderList();
+  }
+
+  // Build sidebar: "All" + pack sections
+  const allBtn = document.createElement('button');
+  allBtn.className = 'preset-cat-btn active';
+  allBtn.textContent = 'All';
+  allBtn.addEventListener('click', () => setActive(null, null));
+  catSidebar.appendChild(allBtn);
+
+  // Collect packs in order, preserving first occurrence
+  const seenPacks: string[] = [];
+  for (const p of allPresets) {
+    const pk = p.pack || '';
+    if (!seenPacks.includes(pk)) seenPacks.push(pk);
+  }
+
+  for (const pack of seenPacks) {
+    const packHeader = document.createElement('button');
+    packHeader.className = 'preset-pack-header';
+    packHeader.textContent = pack || 'Unsorted';
+    packHeader.dataset.pack = pack;
+    packHeader.addEventListener('click', () => setActive(pack, null));
+    catSidebar.appendChild(packHeader);
+
+    // Categories within this pack
+    const cats: string[] = [];
+    for (const p of allPresets) {
+      if ((p.pack || '') === pack && p.category && !cats.includes(p.category)) {
+        cats.push(p.category);
+      }
+    }
+    for (const cat of cats.sort()) {
+      const btn = document.createElement('button');
+      btn.className = 'preset-cat-btn';
+      btn.textContent = cat;
+      btn.dataset.pack = pack;
+      btn.dataset.cat  = cat;
+      btn.addEventListener('click', () => setActive(pack, cat));
+      catSidebar.appendChild(btn);
+    }
+  }
 
   renderList();
 
@@ -3046,63 +3114,16 @@ function openPresetModal() {
 }
 
 function openSaveDialog() {
-  const overlay = document.createElement('div');
-  overlay.className = 'preset-modal-overlay';
-
-  const dialog = document.createElement('div');
-  dialog.className = 'save-dialog';
-
-  const title = document.createElement('div');
-  title.className = 'save-dialog-title';
-  title.textContent = 'Save Preset';
-  dialog.appendChild(title);
-
-  function field(labelText: string, placeholder: string, multiline = false): HTMLInputElement | HTMLTextAreaElement {
-    const wrap = document.createElement('div');
-    const lbl = document.createElement('label');
-    lbl.textContent = labelText;
-    wrap.appendChild(lbl);
-    const el = multiline
-      ? Object.assign(document.createElement('textarea'), { rows: 2, placeholder })
-      : Object.assign(document.createElement('input'), { type: 'text', placeholder });
-    wrap.appendChild(el);
-    dialog.appendChild(wrap);
-    return el as HTMLInputElement | HTMLTextAreaElement;
-  }
-
-  const nameInput   = field('Name',        currentPresetName) as HTMLInputElement;
-  nameInput.value   = currentPresetName;
-  const authorInput = field('Author',      'Your name') as HTMLInputElement;
-  const descInput   = field('Description', 'Describe the sound…', true);
-
-  const row = document.createElement('div');
-  row.className = 'save-dialog-row';
-
-  const cancelBtn = document.createElement('button');
-  cancelBtn.className = 'save-dialog-cancel';
-  cancelBtn.textContent = 'Cancel';
-  cancelBtn.addEventListener('click', () => overlay.remove());
-
-  const confirmBtn = document.createElement('button');
-  confirmBtn.className = 'save-dialog-confirm';
-  confirmBtn.textContent = 'Save';
-  confirmBtn.addEventListener('click', () => {
-    const name = nameInput.value.trim() || 'Untitled';
-    sendSavePreset(name, authorInput.value.trim(), descInput.value.trim());
-    currentPresetName = name;
-    updatePresetNameBtn();
-    overlay.remove();
-  });
-
-  row.appendChild(cancelBtn);
-  row.appendChild(confirmBtn);
-  dialog.appendChild(row);
-
-  overlay.appendChild(dialog);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-  document.body.appendChild(overlay);
-  nameInput.select();
+  // Use a native JUCE dialog so typing doesn't trigger DAW keyboard shortcuts.
+  openNativeSaveDialog(currentPresetName, currentPresetPack, currentPresetCategory);
 }
+
+onPresetSaved((name, pack, category) => {
+  currentPresetName = name;
+  currentPresetPack = pack;
+  currentPresetCategory = category;
+  updatePresetNameBtn();
+});
 
 presetNameBtn.addEventListener('click', openPresetModal);
 presetSaveBtn.addEventListener('click', openSaveDialog);
@@ -3115,7 +3136,9 @@ function loadPresetByIndex(idx: number) {
   } else if (preset.source === 'user' && preset.path) {
     sendLoadUserPreset(preset.path);
   }
-  currentPresetName = preset.name;
+  currentPresetName     = preset.name;
+  currentPresetPack     = preset.pack ?? '';
+  currentPresetCategory = preset.category ?? '';
   updatePresetNameBtn();
 }
 

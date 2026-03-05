@@ -23,6 +23,7 @@ export interface PresetInfo {
   name: string;
   author: string;
   description: string;
+  pack: string;
   category: string;
   source: 'factory' | 'user';
   idx?: number;       // factory presets
@@ -37,6 +38,7 @@ interface JuceBridgeGlobal {
   onModAssignments(assignments: ModAssignmentInfo[]): void;
   onPresets(presets: PresetInfo[]): void;
   onVersion(version: string): void;
+  onPresetSaved(name: string): void;
 }
 
 type Listener = (value: number) => void;
@@ -56,6 +58,8 @@ let lastModAssignments: ModAssignmentInfo[] | undefined;
 const presetsListeners = new Set<PresetsListener>();
 const versionListeners = new Set<VersionListener>();
 let lastVersion: string | undefined;
+type PresetSavedListener = (name: string, pack: string, category: string) => void;
+const presetSavedListeners = new Set<PresetSavedListener>();
 
 // Install the global that C++ will call
 window.__juce = {
@@ -82,6 +86,9 @@ window.__juce = {
   onVersion(version: string) {
     lastVersion = version;
     versionListeners.forEach((fn) => fn(version));
+  },
+  onPresetSaved(name: string, pack: string, category: string) {
+    presetSavedListeners.forEach((fn) => fn(name, pack, category));
   },
 };
 
@@ -169,6 +176,17 @@ export function onVersion(fn: VersionListener): () => void {
   versionListeners.add(fn);
   if (lastVersion !== undefined) fn(lastVersion);
   return () => versionListeners.delete(fn);
+}
+
+/** Open the native save-preset dialog (avoids DAW keyboard shortcut conflicts). */
+export function openNativeSaveDialog(currentName: string, currentPack: string, currentCategory: string): void {
+  window.location.href = `juce://native_save_dialog?name=${encodeURIComponent(currentName)}&pack=${encodeURIComponent(currentPack)}&category=${encodeURIComponent(currentCategory)}`;
+}
+
+/** Subscribe to the name returned after a native save-dialog confirm. */
+export function onPresetSaved(fn: PresetSavedListener): () => void {
+  presetSavedListeners.add(fn);
+  return () => presetSavedListeners.delete(fn);
 }
 
 /** Save current patch as a user preset */

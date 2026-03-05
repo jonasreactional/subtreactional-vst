@@ -893,6 +893,7 @@ SubtreactionalAudioProcessor::getPresetList() const
         PresetInfo p;
         p.isFactory   = true;
         p.factoryIdx  = i;
+        p.pack        = "Reactional Music";
         p.category    = kFactory[i].category;
         p.name        = j.getProperty ("name",        kFactory[i].name).toString();
         p.author      = j.getProperty ("author",      "").toString();
@@ -903,16 +904,27 @@ SubtreactionalAudioProcessor::getPresetList() const
     const juce::File dir = getUserPresetsDir();
     if (dir.isDirectory())
     {
-        for (auto& f : dir.findChildFiles (juce::File::findFiles, false, "*.json"))
+        // Scan up to 3 levels: <pack>/<category>/<name>.json
+        // Backward-compat: also handle <category>/<name>.json and flat <name>.json
+        for (auto& f : dir.findChildFiles (juce::File::findFiles, true, "*.json"))
         {
             auto j = juce::JSON::fromString (f.loadFileAsString());
             PresetInfo p;
             p.isFactory   = false;
             p.filePath    = f.getFullPathName();
-            p.category    = "User";
             p.name        = j.getProperty ("name",        f.getFileNameWithoutExtension()).toString();
             p.author      = j.getProperty ("author",      "").toString();
             p.description = j.getProperty ("description", "").toString();
+
+            // Derive pack and category from relative path depth
+            const juce::String rel = f.getRelativePathFrom (dir);
+            juce::StringArray parts;
+            parts.addTokens (rel, juce::File::getSeparatorString(), "");
+            parts.removeEmptyStrings();
+            if (parts.size() >= 3)       { p.pack = parts[0]; p.category = parts[1]; }
+            else if (parts.size() == 2)  { p.pack = "";        p.category = parts[0]; }
+            else                         { p.pack = "";        p.category = "";        }
+
             list.add (p);
         }
     }
@@ -947,7 +959,9 @@ void SubtreactionalAudioProcessor::setPatchMeta (const juce::String& name,
     description.copyToUTF8 (synth.patch.description, sizeof (synth.patch.description));
 }
 
-void SubtreactionalAudioProcessor::saveUserPreset (const juce::String& name,
+void SubtreactionalAudioProcessor::saveUserPreset (const juce::String& pack,
+                                                    const juce::String& category,
+                                                    const juce::String& name,
                                                     const juce::String& author,
                                                     const juce::String& description)
 {
@@ -958,18 +972,24 @@ void SubtreactionalAudioProcessor::saveUserPreset (const juce::String& name,
     getStateInformation (mb);
     if (mb.isEmpty()) return;
 
-    const juce::File dir = getUserPresetsDir();
+    auto sanitise = [] (const juce::String& s) -> juce::String
+    {
+        juce::String out = s;
+        for (juce::juce_wchar ch : { (juce::juce_wchar)'/', (juce::juce_wchar)'\\',
+                                      (juce::juce_wchar)':', (juce::juce_wchar)'*',
+                                      (juce::juce_wchar)'?', (juce::juce_wchar)'"',
+                                      (juce::juce_wchar)'<', (juce::juce_wchar)'>',
+                                      (juce::juce_wchar)'|' })
+            out = out.replaceCharacter (ch, '_');
+        return out;
+    };
+
+    juce::File dir = getUserPresetsDir();
+    if (pack.isNotEmpty())     dir = dir.getChildFile (sanitise (pack));
+    if (category.isNotEmpty()) dir = dir.getChildFile (sanitise (category));
     dir.createDirectory();
 
-    juce::String safeName = name;
-    for (juce::juce_wchar ch : { (juce::juce_wchar)'/', (juce::juce_wchar)'\\',
-                                  (juce::juce_wchar)':', (juce::juce_wchar)'*',
-                                  (juce::juce_wchar)'?', (juce::juce_wchar)'"',
-                                  (juce::juce_wchar)'<', (juce::juce_wchar)'>',
-                                  (juce::juce_wchar)'|' })
-        safeName = safeName.replaceCharacter (ch, '_');
-    if (safeName.isEmpty()) safeName = "Untitled";
-
+    const juce::String safeName = sanitise (name).isEmpty() ? "Untitled" : sanitise (name);
     juce::File out = dir.getChildFile (safeName + ".json");
     out.replaceWithData (mb.getData(), mb.getSize());
 }

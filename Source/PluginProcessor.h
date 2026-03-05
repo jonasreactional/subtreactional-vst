@@ -93,7 +93,8 @@ public:
         juce::String name;
         juce::String author;
         juce::String description;
-        juce::String category;
+        juce::String pack;      // top-level grouping (parent folder)
+        juce::String category;  // sub-grouping within pack
         bool         isFactory  = false;
         int          factoryIdx = -1;
         juce::String filePath;
@@ -102,7 +103,9 @@ public:
     juce::Array<PresetInfo> getPresetList() const;
     void loadFactoryPreset (int idx);
     void loadUserPreset    (const juce::String& filePath);
-    void saveUserPreset    (const juce::String& name,
+    void saveUserPreset    (const juce::String& pack,
+                            const juce::String& category,
+                            const juce::String& name,
                             const juce::String& author,
                             const juce::String& description);
     void setPatchMeta      (const juce::String& name,

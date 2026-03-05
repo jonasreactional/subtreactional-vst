@@ -135,6 +135,7 @@ void JuceBridge::pushPresetList()
              << "\"name\":"        << esc(p.name).quoted()        << ","
              << "\"author\":"      << esc(p.author).quoted()      << ","
              << "\"description\":" << esc(p.description).quoted() << ","
+             << "\"pack\":"        << esc(p.pack).quoted()        << ","
              << "\"category\":"    << esc(p.category).quoted()    << ","
              << "\"source\":\""    << (p.isFactory ? "factory" : "user") << "\",";
 
@@ -286,6 +287,57 @@ bool JuceBridge::pageAboutToLoad (const juce::String& newURL)
         return false;
     }
 
+    // juce://native_save_dialog?name=<url-encoded-name>
+    // Shows a native JUCE AlertWindow so typing doesn't trigger DAW shortcuts.
+    if (newURL.startsWith ("juce://native_save_dialog"))
+    {
+        juce::String name, pack, category;
+        for (auto& token : juce::StringArray::fromTokens (
+                               newURL.fromFirstOccurrenceOf ("?", false, false), "&", ""))
+        {
+            auto key = token.upToFirstOccurrenceOf ("=", false, false);
+            auto val = juce::URL::removeEscapeChars (token.fromFirstOccurrenceOf ("=", false, false));
+            if      (key == "name")     name     = val;
+            else if (key == "pack")     pack     = val;
+            else if (key == "category") category = val;
+        }
+
+        juce::MessageManager::callAsync ([this, name, pack, category]()
+        {
+            auto* dialog = new juce::AlertWindow ("Save Preset", "", juce::MessageBoxIconType::NoIcon);
+            dialog->setLookAndFeel (&darkLAF);
+            dialog->addTextEditor ("name",   name,     "Name:");
+            dialog->addTextEditor ("author", "",       "Author:");
+            dialog->addTextEditor ("desc",   "",       "Description:");
+            dialog->addTextEditor ("pack",   pack,     "Pack:");
+            dialog->addTextEditor ("cat",    category, "Category:");
+            dialog->addButton ("Save",   1, juce::KeyPress (juce::KeyPress::returnKey));
+            dialog->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+
+            dialog->enterModalState (true,
+                juce::ModalCallbackFunction::create ([this, dialog] (int result)
+                {
+                    if (result == 1)
+                    {
+                        auto pk = dialog->getTextEditorContents ("pack").trim();
+                        auto ct = dialog->getTextEditorContents ("cat").trim();
+                        auto n  = dialog->getTextEditorContents ("name").trim();
+                        if (n.isEmpty()) n = "Untitled";
+                        processor.saveUserPreset (pk, ct, n,
+                            dialog->getTextEditorContents ("author").trim(),
+                            dialog->getTextEditorContents ("desc").trim());
+                        pushPresetList();
+                        goToURL ("javascript:window.__juce && window.__juce.onPresetSaved("
+                                 + n.quoted() + ","
+                                 + pk.quoted() + ","
+                                 + ct.quoted() + ")");
+                    }
+                    dialog->setLookAndFeel (nullptr);
+                }), true);
+        });
+        return false;
+    }
+
     // juce://preset_save?name=...&author=...&desc=...
     if (newURL.startsWith ("juce://preset_save"))
     {
@@ -300,7 +352,7 @@ bool JuceBridge::pageAboutToLoad (const juce::String& newURL)
             else if (key == "desc")   desc   = val;
         }
         juce::MessageManager::callAsync ([this, name, author, desc]() {
-            processor.saveUserPreset (name, author, desc);
+            processor.saveUserPreset ({}, {}, name, author, desc);
             pushPresetList();
         });
         return false;
