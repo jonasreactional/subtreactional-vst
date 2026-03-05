@@ -33,6 +33,11 @@ add_subdirectory(external/subtreactional)
 target_include_directories(subtreactional PRIVATE ${cjson_SOURCE_DIR})
 target_link_libraries(subtreactional PRIVATE cjson)
 
+# Linux: subtreactional is a static lib linked into a shared object (.so),
+# so it must be compiled with -fPIC.
+set_target_properties(subtreactional PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(cjson PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 # LEAF's CMakeLists uses GCC/Clang flags unconditionally; replace with
 # generator expressions so MSVC doesn't choke on -Wno-narrowing etc.
 if(TARGET LEAF)
