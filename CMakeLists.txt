@@ -90,7 +90,7 @@ juce_add_plugin(SubtreactionalVST
     PLUGIN_CODE               Stre
     FORMATS                   VST3
     PRODUCT_NAME              "Subtreactional"
-    COMPANY_NAME              "Reactional"
+    COMPANY_NAME              "Reactional Music"
     IS_SYNTH                  TRUE
     NEEDS_MIDI_INPUT          TRUE
     NEEDS_MIDI_OUTPUT         FALSE

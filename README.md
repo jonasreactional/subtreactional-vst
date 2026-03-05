@@ -126,6 +126,6 @@ Factory presets live in `presets/` organized by category. User presets are saved
 
 | Platform | Path |
 |----------|------|
-| macOS | `~/Library/Reactional/Subtreactional/Presets/` |
-| Windows | `%APPDATA%/Reactional/Subtreactional/Presets/` |
-| Linux | `~/.config/Reactional/Subtreactional/Presets/` |
+| macOS | `~/Library/Reactional Music/Subtreactional/Presets/` |
+| Windows | `%APPDATA%/Reactional Music/Subtreactional/Presets/` |
+| Linux | `~/.config/Reactional Music/Subtreactional/Presets/` |

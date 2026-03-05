@@ -875,7 +875,7 @@ static constexpr int kNumFactory = (int)(sizeof(kFactory) / sizeof(kFactory[0]))
 juce::File SubtreactionalAudioProcessor::getUserPresetsDir() const
 {
     return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
-               .getChildFile ("Reactional")
+               .getChildFile ("Reactional Music")
                .getChildFile ("Subtreactional")
                .getChildFile ("Presets");
 }
