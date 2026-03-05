@@ -523,7 +523,10 @@ void SubtreactionalAudioProcessor::processBlock (juce::AudioBuffer<float>& buffe
         buffer.getWritePointer (0),
         buffer.getWritePointer (1)
     };
-    st_synth_render (&synth, channelPtrs, buffer.getNumSamples());
+    {
+        juce::ScopedLock sl (modLock_);
+        st_synth_render (&synth, channelPtrs, buffer.getNumSamples());
+    }
 
     pushAnalyzerSamples (buffer);
 }
@@ -659,8 +662,11 @@ void SubtreactionalAudioProcessor::modAdd (int sourceType, int sourceIdx,
 {
     if (! synthInitialised) return;
 
-    st_synth_mod_add (&synth, sourceType, sourceIdx,
-                      paramName.toRawUTF8(), depth);
+    {
+        juce::ScopedLock sl (modLock_);
+        st_synth_mod_add (&synth, sourceType, sourceIdx,
+                          paramName.toRawUTF8(), depth);
+    }
 
     // Update local mirror
     auto it = std::find_if (modAssignments_.begin(), modAssignments_.end(),
@@ -683,7 +689,10 @@ void SubtreactionalAudioProcessor::modRemove (int sourceType, int sourceIdx,
 {
     if (! synthInitialised) return;
 
-    st_synth_mod_remove (&synth, sourceType, sourceIdx, paramName.toRawUTF8());
+    {
+        juce::ScopedLock sl (modLock_);
+        st_synth_mod_remove (&synth, sourceType, sourceIdx, paramName.toRawUTF8());
+    }
 
     modAssignments_.erase (
         std::remove_if (modAssignments_.begin(), modAssignments_.end(),
@@ -701,8 +710,11 @@ void SubtreactionalAudioProcessor::modSetDepth (int sourceType, int sourceIdx,
 {
     if (! synthInitialised) return;
 
-    st_synth_mod_set_depth (&synth, sourceType, sourceIdx,
-                            paramName.toRawUTF8(), depth);
+    {
+        juce::ScopedLock sl (modLock_);
+        st_synth_mod_set_depth (&synth, sourceType, sourceIdx,
+                                paramName.toRawUTF8(), depth);
+    }
 
     auto it = std::find_if (modAssignments_.begin(), modAssignments_.end(),
         [&](const ModAssignment& a) {

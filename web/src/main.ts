@@ -1746,6 +1746,10 @@ const MOD_DISPLAY_SCALE: Record<string, number> = {
   fx1_mix:          1,
   fx2_mix:          1,
   fx3_mix:          1,
+  lfo0_rate:        20,  // ±20 Hz at depth=1 (matches st_synth.c * 20.0f)
+  lfo1_rate:        20,
+  lfo2_rate:        20,
+  lfo3_rate:        20,
 };
 
 // Parameters modulated multiplicatively in log2 space (musical symmetry).

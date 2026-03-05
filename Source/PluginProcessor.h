@@ -178,6 +178,10 @@ private:
     static constexpr float kNoLFOOverride = -2.0f;
     std::array<std::atomic<float>, ST_MAX_LFOS> pendingLFODepth_;
 
+    // Guards synth.patch.macros/lfos targets[] against concurrent access between
+    // the audio thread (st_synth_render) and message thread (modAdd/modRemove/modSetDepth).
+    juce::CriticalSection modLock_;
+
     // Modulation assignments (persisted alongside patch JSON)
     std::vector<ModAssignment> modAssignments_;
 
