@@ -163,6 +163,14 @@ const MOD_PARAM_NAMES: Record<string, string> = {
   'fx1_mix':          'fx1.mix',
   'fx2_mix':          'fx2.mix',
   'fx3_mix':          'fx3.mix',
+  'lfo0_rate':        'lfo0.rate',
+  'lfo0_depth':       'lfo0.depth',
+  'lfo1_rate':        'lfo1.rate',
+  'lfo1_depth':       'lfo1.depth',
+  'lfo2_rate':        'lfo2.rate',
+  'lfo2_depth':       'lfo2.depth',
+  'lfo3_rate':        'lfo3.rate',
+  'lfo3_depth':       'lfo3.depth',
 };
 
 // Reverse lookup: C mod param name → UI param ID
