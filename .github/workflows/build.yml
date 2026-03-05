@@ -81,7 +81,21 @@ jobs:
       - name: Build
         run: cmake --build build --config Release
 
-      - name: Upload VST3
+      # macOS/Linux: .vst3 is a directory bundle — zip it to preserve structure
+      - name: Package VST3 (macOS/Linux)
+        if: runner.os != 'Windows'
+        working-directory: build/SubtreactionalVST_artefacts/Release/VST3
+        run: zip -r Subtreactional.vst3.zip Subtreactional.vst3
+
+      - name: Upload VST3 (macOS/Linux)
+        if: runner.os != 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Subtreactional-${{ matrix.name }}-VST3
+          path: build/SubtreactionalVST_artefacts/Release/VST3/Subtreactional.vst3.zip
+
+      - name: Upload VST3 (Windows)
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: Subtreactional-${{ matrix.name }}-VST3
