@@ -93,8 +93,8 @@ jobs:
       - name: Import Developer ID certificate
         if: runner.os == 'macOS'
         env:
-          CERT_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
-          CERT_PASSWORD:   ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          CERT_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE }}
+          CERT_PASSWORD:   ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         run: |
           KEYCHAIN="build.keychain"
           KEYCHAIN_PWD="$(openssl rand -hex 16)"
