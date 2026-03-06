@@ -30,8 +30,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+          fetch-depth: 1
           token: ${{ secrets.GH_PAT }}
+
+      - name: Init submodules (shallow)
+        run: git submodule update --init --recursive --depth 1
 
       # JUCE 7.0.12 uses CGWindowListCreateImage which was removed in macOS 15.
       # Patch it out at build time (unused screenshot helpers).
