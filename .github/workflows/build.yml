@@ -89,9 +89,60 @@ jobs:
       - name: Build
         run: cmake --build build --config Release
 
-      # macOS/Linux: .vst3 is a directory bundle — zip it to preserve structure
-      - name: Package VST3 (macOS/Linux)
-        if: runner.os != 'Windows'
+      # ── macOS: sign → notarize → staple ─────────────────────────────────────
+      - name: Import Developer ID certificate
+        if: runner.os == 'macOS'
+        env:
+          CERT_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
+          CERT_PASSWORD:   ${{ secrets.MACOS_CERTIFICATE_PWD }}
+        run: |
+          KEYCHAIN="build.keychain"
+          KEYCHAIN_PWD="$(openssl rand -hex 16)"
+          security create-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
+          echo "$CERT_P12_BASE64" | base64 --decode -o cert.p12
+          security import cert.p12 -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S "apple-tool:,apple:,codesign:" -s -k "$KEYCHAIN_PWD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" "$(security list-keychains -d user | tr -d '"')"
+          rm cert.p12
+
+      - name: Sign VST3
+        if: runner.os == 'macOS'
+        run: |
+          VST3="build/SubtreactionalVST_artefacts/Release/VST3/Subtreactional.vst3"
+          IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | awk '{print $2}')
+          echo "Signing with identity: $IDENTITY"
+          codesign --deep --force --options runtime --sign "$IDENTITY" "$VST3"
+          codesign --verify --deep --strict --verbose=2 "$VST3"
+
+      - name: Notarize VST3
+        if: runner.os == 'macOS'
+        env:
+          APPLE_ID:       ${{ secrets.APPLE_ID }}
+          APPLE_APP_PWD:  ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID:  ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          VST3="build/SubtreactionalVST_artefacts/Release/VST3/Subtreactional.vst3"
+          ZIP="/tmp/Subtreactional_notarize.zip"
+          ditto -c -k --keepParent "$VST3" "$ZIP"
+          xcrun notarytool submit "$ZIP" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_PWD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          xcrun stapler staple "$VST3"
+          rm "$ZIP"
+
+      # macOS: use ditto to preserve bundle structure + extended attrs
+      - name: Package VST3 (macOS)
+        if: runner.os == 'macOS'
+        working-directory: build/SubtreactionalVST_artefacts/Release/VST3
+        run: ditto -c -k --keepParent Subtreactional.vst3 Subtreactional.vst3.zip
+
+      # Linux: .vst3 is a directory bundle — zip it to preserve structure
+      - name: Package VST3 (Linux)
+        if: runner.os == 'Linux'
         working-directory: build/SubtreactionalVST_artefacts/Release/VST3
         run: zip -r Subtreactional.vst3.zip Subtreactional.vst3
 
