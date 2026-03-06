@@ -3,4 +3,4 @@
 	url = https://github.com/juce-framework/JUCE.git
 [submodule "external/subtreactional"]
 	path = external/subtreactional
-	url = git@github.com:jonasreactional/subtreactional.git
+	url = git@github.com:reactionalmusic/reactional-subtreactional.git
