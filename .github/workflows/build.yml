@@ -86,6 +86,33 @@ jobs:
         if: runner.os != 'macOS'
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
+      - name: Verify JUCE WebView2 patch (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $juceFile = "external/JUCE/modules/juce_gui_extra/native/juce_WebBrowserComponent_windows.cpp"
+
+          if (-not (Test-Path $juceFile)) {
+            Write-Error "Missing JUCE web browser source file: $juceFile"
+          }
+
+          $content = Get-Content $juceFile -Raw
+
+          # Guard against black-screen regressions: javascript: URLs must be
+          # executed via ExecuteScript, and WebView2 env creation must use the
+          # static loader call path.
+          $hasExecuteScript = $content.Contains('ExecuteScript (url.substring (11).toWideCharPointer(), nullptr);')
+          $hasStaticCreate = $content.Contains('CreateCoreWebView2EnvironmentWithOptions (nullptr,')
+
+          if (-not $hasExecuteScript -or -not $hasStaticCreate) {
+            Write-Host "Expected WebView2 patch markers were not found in $juceFile"
+            Write-Host "--- excerpt around goToURL ---"
+            Select-String -Path $juceFile -Pattern 'goToURL \(const String& url' -Context 0,30 | ForEach-Object { $_.ToString() }
+            Write-Host "--- excerpt around createWebViewHandle ---"
+            Select-String -Path $juceFile -Pattern 'createWebViewHandle \(const WebBrowserComponent::Options::WinWebView2& options\)' -Context 0,30 | ForEach-Object { $_.ToString() }
+            Write-Error "JUCE WebView2 patch is missing. Failing build to prevent black-screen Windows VST3 artifacts."
+          }
+
       - name: Build
         run: cmake --build build --config Release
 
