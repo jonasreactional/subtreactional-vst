@@ -9,7 +9,9 @@ SubtreactionalAudioProcessorEditor::SubtreactionalAudioProcessorEditor (
 {
     addAndMakeVisible (bridge);
 
-    // Dark overlay sits above the WebView and hides itself once the page loads.
+   #if JUCE_MAC || JUCE_IOS
+    // The dark overlay is only needed on Apple to hide WKWebView's white
+    // flash during first paint.
     addAndMakeVisible (darkCover);
     bridge.onPageReady = [this]()
     {
@@ -17,6 +19,7 @@ SubtreactionalAudioProcessorEditor::SubtreactionalAudioProcessorEditor (
         // Timer runs at 30 Hz, so 15 ticks ≈ 500 ms.
         coverHideCountdown = 15;
     };
+   #endif
 
     // Subscribe to all parameter changes so preset loads push values to the UI
     for (int i = 0; i < SubtreactionalAudioProcessor::kNumParams; ++i)
@@ -46,7 +49,9 @@ SubtreactionalAudioProcessorEditor::~SubtreactionalAudioProcessorEditor()
 void SubtreactionalAudioProcessorEditor::resized()
 {
     bridge.setBounds (getLocalBounds());
+   #if JUCE_MAC || JUCE_IOS
     darkCover.setBounds (getLocalBounds());
+   #endif
 }
 
 
@@ -95,11 +100,13 @@ void SubtreactionalAudioProcessorEditor::parameterChanged (
 
 void SubtreactionalAudioProcessorEditor::timerCallback()
 {
+   #if JUCE_MAC || JUCE_IOS
     if (coverHideCountdown > 0)
     {
         if (--coverHideCountdown == 0)
             darkCover.setVisible (false);
     }
+   #endif
 
     // If applyStateData ran on the audio thread since last tick (DAW project load,
     // sample-rate change re-init, etc.), re-push mod assignments to JS.
