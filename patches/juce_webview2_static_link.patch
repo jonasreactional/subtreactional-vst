@@ -1,0 +1,54 @@
+diff --git a/modules/juce_gui_extra/native/juce_WebBrowserComponent_windows.cpp b/modules/juce_gui_extra/native/juce_WebBrowserComponent_windows.cpp
+index 209c05025a..ab5e0e4c0b 100644
+--- a/modules/juce_gui_extra/native/juce_WebBrowserComponent_windows.cpp
++++ b/modules/juce_gui_extra/native/juce_WebBrowserComponent_windows.cpp
+@@ -459,6 +459,14 @@ public:
+ 
+     void goToURL (const String& url, const StringArray* headers, const MemoryBlock* postData) override
+     {
++        // javascript: URIs must be executed via ExecuteScript, not Navigate.
++        // Navigate("javascript:...") fires NavigationCompleted and blanks the page.
++        if (webView != nullptr && url.startsWithIgnoreCase ("javascript:"))
++        {
++            webView->ExecuteScript (url.substring (11).toWideCharPointer(), nullptr);
++            return;
++        }
++
+         urlRequest = { url,
+                        headers != nullptr ? *headers : StringArray(),
+                        postData != nullptr && postData->getSize() > 0 ? *postData : MemoryBlock() };
+@@ -542,31 +550,14 @@ public:
+ 
+     static std::optional<WebViewHandle> createWebViewHandle (const WebBrowserComponent::Options::WinWebView2& options)
+     {
+-        using CreateWebViewEnvironmentWithOptionsFunc = HRESULT (*) (PCWSTR, PCWSTR,
+-                                                                     ICoreWebView2EnvironmentOptions*,
+-                                                                     ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler*);
+-
+-        auto dllPath = options.getDLLLocation().getFullPathName();
+-
+-        if (dllPath.isEmpty())
+-            dllPath = "WebView2Loader.dll";
+-
+         WebViewHandle result;
+ 
+-        result.loaderHandle = WebViewHandle::LibraryRef (LoadLibraryA (dllPath.toUTF8()), &::FreeLibrary);
+-
+-        if (result.loaderHandle == nullptr)
+-            return {};
+-
+-        auto* createWebViewEnvironmentWithOptions = (CreateWebViewEnvironmentWithOptionsFunc) GetProcAddress (result.loaderHandle.get(),
+-                                                                                                              "CreateCoreWebView2EnvironmentWithOptions");
+-        if (createWebViewEnvironmentWithOptions == nullptr)
+-            return {};
+-
+         auto webViewOptions = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
+         const auto userDataFolder = options.getUserDataFolder().getFullPathName();
+ 
+-        auto hr = createWebViewEnvironmentWithOptions (nullptr,
++        // Call CreateCoreWebView2EnvironmentWithOptions directly via
++        // WebView2LoaderStatic.lib — no WebView2Loader.dll required at runtime.
++        auto hr = CreateCoreWebView2EnvironmentWithOptions (nullptr,
+                                                        userDataFolder.isNotEmpty() ? userDataFolder.toWideCharPointer() : nullptr,
+                                                        webViewOptions.Get(),
+             Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(

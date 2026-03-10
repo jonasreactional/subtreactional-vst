@@ -12,9 +12,16 @@ static juce::WebBrowserComponent::Options makeBrowserOptions()
     juce::WebBrowserComponent::Options opts;
    #if JUCE_WINDOWS
     // Default Windows backend is IE (ES5 only) — request WebView2 (Chromium/Edge).
-    // JUCE silently falls back to IE if WebView2 runtime is not installed,
-    // so ship with the WebView2 bootstrapper or document the runtime requirement.
+    // Requires JUCE_USE_WIN_WEBVIEW2=1 and WebView2LoaderStatic.lib at link time.
     opts = opts.withBackend (juce::WebBrowserComponent::Options::Backend::webview2);
+
+    auto wv2 = juce::WebBrowserComponent::Options::WinWebView2()
+                   .withUserDataFolder (
+                       juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+                           .getChildFile ("Subtreactional"))
+                   .withBackgroundColour (juce::Colour (0xff121212));
+
+    opts = opts.withWinWebView2Options (wv2);
    #endif
     return opts;
 }

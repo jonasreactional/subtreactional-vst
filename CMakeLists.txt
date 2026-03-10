@@ -139,6 +139,27 @@ else()
     target_sources(SubtreactionalVST PRIVATE Source/NativeDarkCover.mm)
 endif()
 
+# Windows: fetch WebView2 SDK and enable the Chromium-based WebView2 backend.
+# The JUCE patch (juce_webview2_static_link.patch) removes the dynamic
+# WebView2Loader.dll dependency so no extra DLL needs to ship with the VST3.
+if(WIN32)
+    FetchContent_Declare(
+        webview2
+        URL "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.902.49"
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    FetchContent_MakeAvailable(webview2)
+    set(WEBVIEW2_INCLUDE "${webview2_SOURCE_DIR}/build/native/include")
+
+    # Determine the correct architecture subdirectory
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(WEBVIEW2_ARCH "x64")
+    else()
+        set(WEBVIEW2_ARCH "x86")
+    endif()
+    set(WEBVIEW2_STATIC_LIB "${webview2_SOURCE_DIR}/build/native/${WEBVIEW2_ARCH}/WebView2LoaderStatic.lib")
+endif()
+
 target_compile_definitions(SubtreactionalVST
     PUBLIC
         JUCE_WEB_BROWSER=1
@@ -146,6 +167,7 @@ target_compile_definitions(SubtreactionalVST
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_DISPLAY_SPLASH_SCREEN=0
         JUCE_REPORT_APP_USAGE=0
+        $<$<PLATFORM_ID:Windows>:JUCE_USE_WIN_WEBVIEW2=1>
 )
 
 target_link_libraries(SubtreactionalVST
@@ -161,6 +183,11 @@ target_link_libraries(SubtreactionalVST
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags
 )
+
+if(WIN32)
+    target_include_directories(SubtreactionalVST PRIVATE "${WEBVIEW2_INCLUDE}")
+    target_link_libraries(SubtreactionalVST PRIVATE "${WEBVIEW2_STATIC_LIB}")
+endif()
 
 if(HAVE_WEB_UI)
     target_link_libraries(SubtreactionalVST PRIVATE SubtreactionalWebUI)
