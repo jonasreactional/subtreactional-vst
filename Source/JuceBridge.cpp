@@ -98,6 +98,11 @@ void JuceBridge::pushWaveform (const float* points, int numPoints)
              + makeNumericArrayLiteral (points, numPoints) + ")");
 }
 
+void JuceBridge::pushCPU (float loadProportion)
+{
+    goToURL ("javascript:window.__juce && window.__juce.onCPU(" + juce::String (loadProportion, 4) + ")");
+}
+
 void JuceBridge::pushLFOValues (const float* vals, int n)
 {
     if (vals == nullptr || n <= 0)
@@ -188,8 +193,11 @@ void JuceBridge::pushModAssignments()
     {
         if (! first) json << ",";
         first = false;
+        const char* typeStr = a.sourceType == 0 ? "lfo"
+                            : a.sourceType == 1 ? "macro"
+                            : a.sourceType == 2 ? "key" : "vel";
         json << "{"
-             << "\"type\":\"" << (a.sourceType == 0 ? "lfo" : "macro") << "\","
+             << "\"type\":\"" << typeStr << "\","
              << "\"idx\":"    << a.sourceIdx << ","
              << "\"param\":"  << a.paramName.quoted() << ","
              << "\"depth\":"  << juce::String (a.depth, 4)
@@ -264,8 +272,10 @@ bool JuceBridge::pageAboutToLoad (const juce::String& newURL)
                 depth = val.getFloatValue();
         }
 
-        // source_type: 0 = LFO, 1 = Macro
-        const int sourceType = (src == "macro") ? 1 : 0;
+        // source_type: 0 = LFO, 1 = Macro, 2 = Key, 3 = Vel
+        const int sourceType = (src == "macro") ? 1
+                             : (src == "key")   ? 2
+                             : (src == "vel")   ? 3 : 0;
 
         if (newURL.startsWith ("juce://mod_add"))
             processor.modAdd (sourceType, idx, paramName, depth);

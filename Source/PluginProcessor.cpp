@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
+#include <limits>
 
 extern "C" {
 #include "subtreactional/subtreactional.h"
@@ -154,6 +155,7 @@ const ParamMap SubtreactionalAudioProcessor::kParams[] = {
     { "pitch_bend_range",    "pitch_bend_range" },
     { "portamento_time",     "portamento_time" },
     { "pan_spread",          "pan_spread" },
+    { "vel_to_amp",          "vel_to_amp" },
     // Voice count
     { "num_voices",          "num_voices" },
     // LFO 0..3
@@ -294,6 +296,9 @@ SubtreactionalAudioProcessor::createParameterLayout()
     // Global pan spread (0=mono, 1=full stereo, default 1.0 for audible stereo)
     addSlider("pan_spread", 0.0f, 1.0f, 1.0f, 0.001f);
 
+    // Velocity → amplitude scaling (0=velocity ignored, 1=full velocity sensitivity)
+    addSlider("vel_to_amp", 0.0f, 1.0f, 1.0f, 0.001f);
+
     // Play mode (Poly=0, Mono=1, Legato=2)
     addCombo("play_mode", {"Poly","Mono","Legato"}, 0);
 
@@ -349,6 +354,7 @@ SubtreactionalAudioProcessor::~SubtreactionalAudioProcessor()
 //==============================================================================
 void SubtreactionalAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    loadMeasurer_.reset (sampleRate, samplesPerBlock);
     // Preserve current patch state (including mod assignments) across re-initialization.
     // This handles both cases:
     //  (a) setStateInformation called before first prepareToPlay → pendingState_ already set
@@ -386,6 +392,16 @@ void SubtreactionalAudioProcessor::prepareToPlay (double sampleRate, int samples
     }
 
     synthInitialised = true;
+
+    // Cache raw APVTS pointers (stable for processor lifetime; only need to do this once).
+    if (rawParamPtrs_.empty())
+    {
+        rawParamPtrs_.resize (kNumParams);
+        for (int i = 0; i < kNumParams; ++i)
+            rawParamPtrs_[i] = apvts.getRawParameterValue (kParams[i].apvtsId);
+    }
+    // Reset value cache so the first block after init always does a full sync.
+    lastSyncedValues_.assign (kNumParams, std::numeric_limits<float>::quiet_NaN());
 
     // If setStateInformation was called before prepareToPlay (common DAW pattern),
     // apply the deferred patch JSON now — it overrides the APVTS defaults below.
@@ -432,6 +448,8 @@ bool SubtreactionalAudioProcessor::isBusesLayoutSupported (const BusesLayout& la
 void SubtreactionalAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                                   juce::MidiBuffer& midiMessages)
 {
+    juce::AudioProcessLoadMeasurer::ScopedTimer cpuTimer (loadMeasurer_, buffer.getNumSamples());
+
     if (! synthInitialised)
     {
         buffer.clear();
@@ -463,8 +481,12 @@ void SubtreactionalAudioProcessor::processBlock (juce::AudioBuffer<float>& buffe
     {
         for (int i = 0; i < kNumParams; ++i)
         {
-            float val = apvts.getRawParameterValue (kParams[i].apvtsId)->load();
-            st_synth_set_param_float (&synth, kParams[i].synthName, val);
+            const float val = rawParamPtrs_[i]->load (std::memory_order_relaxed);
+            if (val != lastSyncedValues_[i])
+            {
+                lastSyncedValues_[i] = val;
+                st_synth_set_param_float (&synth, kParams[i].synthName, val);
+            }
         }
     }
 
@@ -652,6 +674,32 @@ void SubtreactionalAudioProcessor::rebuildModAssignmentsFromPatch()
             modAssignments_.push_back ({ 1, m,
                                          juce::String (kModParamNames[paramIdx]),
                                          mac.targets[t].depth });
+        }
+    }
+
+    // Rebuild from Key mod (sourceType 2, idx 0)
+    {
+        const st_mod_source_data& km = synth.patch.key_mod;
+        for (int t = 0; t < km.num_targets; ++t)
+        {
+            int paramIdx = static_cast<int> (km.targets[t].param);
+            if (paramIdx < 0 || paramIdx >= ST_MOD_PARAM_COUNT) continue;
+            modAssignments_.push_back ({ ST_MOD_SOURCE_KEY, 0,
+                                         juce::String (kModParamNames[paramIdx]),
+                                         km.targets[t].depth });
+        }
+    }
+
+    // Rebuild from Vel mod (sourceType 3, idx 0)
+    {
+        const st_mod_source_data& vm = synth.patch.vel_mod;
+        for (int t = 0; t < vm.num_targets; ++t)
+        {
+            int paramIdx = static_cast<int> (vm.targets[t].param);
+            if (paramIdx < 0 || paramIdx >= ST_MOD_PARAM_COUNT) continue;
+            modAssignments_.push_back ({ ST_MOD_SOURCE_VEL, 0,
+                                         juce::String (kModParamNames[paramIdx]),
+                                         vm.targets[t].depth });
         }
     }
 }

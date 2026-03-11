@@ -1,4 +1,4 @@
-import { setParam, getParam, onParam, onWaveform, onSpectrogram, onLFO, notifyHostReady, sendModAdd, sendModRemove, sendModSetDepth, onModAssignments, onPresets, onVersion, onPresetSaved, openNativeSaveDialog, sendLoadFactoryPreset, sendLoadUserPreset, sendSavePreset, type PresetInfo } from './bridge';
+import { setParam, getParam, onParam, onWaveform, onSpectrogram, onLFO, notifyHostReady, sendModAdd, sendModRemove, sendModSetDepth, onModAssignments, onPresets, onVersion, onPresetSaved, onCPU, openNativeSaveDialog, sendLoadFactoryPreset, sendLoadUserPreset, sendSavePreset, type PresetInfo } from './bridge';
 import jonasPhotoUrl from './jonas.jpeg';
 
 // ---------------------------------------------------------------------------
@@ -122,6 +122,7 @@ const PARAMS: ParamDef[] = [
   { id: 'pitch_bend_range', label: 'Pitch Bend', min: 0, max: 24,   defaultValue: 2,   step: 1, type: 'slider' },
   { id: 'portamento_time',  label: 'Portamento', min: 0, max: 1000, defaultValue: 0,   type: 'slider' },
   { id: 'pan_spread',       label: 'Pan Spread', min: 0, max: 1,    defaultValue: 1,   type: 'slider' },
+  { id: 'vel_to_amp',       label: 'Vel > Amp',  min: 0, max: 1,    defaultValue: 1,   type: 'slider' },
   { id: 'play_mode',        label: 'Mode',       min: 0, max: 2,    defaultValue: 0,   type: 'combo', options: PLAY_MODES },
   // Voice count
   { id: 'num_voices', label: 'Voices', min: 0, max: 15, defaultValue: 7, type: 'combo', options: VOICE_COUNTS },
@@ -144,6 +145,8 @@ const PARAMS: ParamDef[] = [
 // Modulation source colors (LFO 1-4 and Macro 1-4)
 const LFO_COLORS = ['#825CED', '#F38E30', '#2DD4BF', '#86EFAC'];
 const MACRO_COLORS = ['#F04E4E', '#4EF0A3', '#F0C24E', '#4E90F0'];
+const KEY_COLOR = '#FFB347';
+const VEL_COLOR = '#FF6B9D';
 
 // Maps UI param IDs to C modulation param names (dot notation for st_synth_mod_add)
 const MOD_PARAM_NAMES: Record<string, string> = {
@@ -276,6 +279,15 @@ style.textContent = `
     letter-spacing: 1px;
     color: ${C.offDark5};
     user-select: none;
+  }
+  .header-cpu {
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    color: ${C.offDark5};
+    user-select: none;
+    min-width: 44px;
+    text-align: right;
   }
 
   /* ─── Preset selector (header center) ───────────────────── */
@@ -1080,6 +1092,25 @@ style.textContent = `
     cursor: grabbing;
   }
 
+  /* ─── Key / Vel drag handle ─────────────────────────────────────── */
+  .keyvel-drag-handle {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    cursor: grab;
+    flex-shrink: 0;
+    transition: transform 0.1s;
+    box-shadow: 0 0 6px var(--kv-color, #FFB347);
+  }
+
+  .keyvel-drag-handle:hover {
+    transform: scale(1.2);
+  }
+
+  .keyvel-drag-handle:active {
+    cursor: grabbing;
+  }
+
   /* ─── Modulation depth mini-knob ────────────────────────────────── */
   .mod-depth-knob {
     position: absolute;
@@ -1145,22 +1176,16 @@ style.textContent = `
     border: none;
     padding: 0;
     cursor: pointer;
-    overflow: hidden;
     flex-shrink: 0;
     opacity: 0.75;
     transition: opacity 0.15s, box-shadow 0.15s;
     box-shadow: 0 0 0 1.5px ${C.offDark5};
+    background-size: cover;
+    background-position: center;
   }
   .about-btn:hover {
     opacity: 1;
     box-shadow: 0 0 0 1.5px ${C.purple}, 0 0 8px ${C.purpleGlow};
-  }
-  .about-btn img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    pointer-events: none;
   }
 
   /* ─── About modal ─────────────────────────────────────────── */
@@ -1805,17 +1830,24 @@ presetSelector.appendChild(presetSaveBtn);
 const headerRight = document.createElement('div');
 headerRight.className = 'header-right';
 
+const cpuDisplay = document.createElement('span');
+cpuDisplay.className = 'header-cpu';
+cpuDisplay.textContent = '0% CPU';
+let _smoothedCpu = 0;
+onCPU((load) => {
+  _smoothedCpu = _smoothedCpu * 0.92 + load * 0.08;
+  cpuDisplay.textContent = `${Math.round(_smoothedCpu * 100)}% CPU`;
+});
+
 const headerVersion = document.createElement('span');
 headerVersion.className = 'header-version';
 
 const aboutBtn = document.createElement('button');
 aboutBtn.className = 'about-btn';
 aboutBtn.setAttribute('data-tooltip', 'About');
-const aboutBtnImg = document.createElement('img');
-aboutBtnImg.src = jonasPhotoUrl;
-aboutBtnImg.alt = 'Jonas Kjellberg';
-aboutBtn.appendChild(aboutBtnImg);
+aboutBtn.style.backgroundImage = `url(${jonasPhotoUrl})`;
 
+headerRight.appendChild(cpuDisplay);
 headerRight.appendChild(headerVersion);
 headerRight.appendChild(aboutBtn);
 
@@ -1892,13 +1924,13 @@ for (let i = 0; i < 4; i++) {
 // ---------------------------------------------------------------------------
 
 interface ActiveDrag {
-  type: 'lfo' | 'macro';
+  type: 'lfo' | 'macro' | 'key' | 'vel';
   idx: number;
   color: string;
 }
 
 interface ModDepthEntry {
-  type: 'lfo' | 'macro';
+  type: 'lfo' | 'macro' | 'key' | 'vel';
   idx: number;
   color: string;
   depth: number;
@@ -1991,8 +2023,11 @@ function registerModIndicatorUpdater(paramId: string): void {
     const rawBase  = normToRaw(normBase, def);
 
     // lfoCurrentOutput[idx] is raw * lfoDepth, pushed from synth at 30 Hz
+    // key/vel are per-voice — no global signal available, use 0
     const signal = (a: { type: string; idx: number; depth: number }) =>
-      a.type === 'lfo' ? lfoCurrentOutput[a.idx] : macroV[a.idx];
+      a.type === 'lfo' ? lfoCurrentOutput[a.idx]
+      : (a.type === 'macro') ? macroV[a.idx]
+      : 0;
 
     let rawMod: number;
     if (logScale !== undefined) {
@@ -2049,9 +2084,35 @@ function queueParam(id: string, value: number) {
   if (!_paramFlushPending) { _paramFlushPending = true; setTimeout(_flushParamQueue, 0); }
 }
 
+// Param IDs that cannot be targeted by Key/Vel (global/outside per-voice loop)
+const KEY_VEL_INVALID_TARGETS = new Set([
+  'pan_spread', 'master_volume',
+  'fx0_mix', 'fx1_mix', 'fx2_mix', 'fx3_mix',
+  'lfo0_rate', 'lfo0_depth', 'lfo1_rate', 'lfo1_depth',
+  'lfo2_rate', 'lfo2_depth', 'lfo3_rate', 'lfo3_depth',
+]);
+
+// LFO rate/depth params — LFOs cannot modulate other LFOs (or themselves)
+const LFO_RATE_DEPTH_TARGETS = new Set([
+  'lfo0_rate', 'lfo0_depth', 'lfo1_rate', 'lfo1_depth',
+  'lfo2_rate', 'lfo2_depth', 'lfo3_rate', 'lfo3_depth',
+]);
+
+function isValidTargetForDrag(paramId: string): boolean {
+  if (!activeDrag) return true;
+  if (activeDrag.type === 'key' || activeDrag.type === 'vel') {
+    return !KEY_VEL_INVALID_TARGETS.has(paramId);
+  }
+  if (activeDrag.type === 'lfo') {
+    return !LFO_RATE_DEPTH_TARGETS.has(paramId);
+  }
+  return true;
+}
+
 function setAllDropZonesHighlighted(color: string | null) {
   document.querySelectorAll<HTMLElement>('.knob-container[data-param-id]').forEach((el) => {
-    if (color) {
+    const paramId = el.getAttribute('data-param-id') ?? '';
+    if (color && isValidTargetForDrag(paramId)) {
       el.style.setProperty('--drop-color', color);
       el.classList.add('drop-zone-ready');
     } else {
@@ -2124,7 +2185,10 @@ function addModDepthKnob(containerEl: HTMLElement, paramId: string, entry: ModDe
 
   function updateArc(depth: number) {
     const absD = Math.abs(depth);
-    mini.setAttribute('data-tooltip', `${entry.type.toUpperCase()} ${entry.idx + 1} depth: ${depth >= 0 ? '+' : ''}${depth.toFixed(2)} · Drag to adjust · Right-click to remove`);
+    const srcLabel = (entry.type === 'key' || entry.type === 'vel')
+      ? entry.type.toUpperCase()
+      : `${entry.type.toUpperCase()} ${entry.idx + 1}`;
+    mini.setAttribute('data-tooltip', `${srcLabel} depth: ${depth >= 0 ? '+' : ''}${depth.toFixed(2)} · Drag to adjust · Right-click to remove`);
     if (absD < 0.01) {
       arcSlice.setAttribute('d', '');
       arcSlice.setAttribute('opacity', '1');
@@ -2216,7 +2280,9 @@ onModAssignments((assignments) => {
     if (!paramId) continue;
     const containerEl = document.querySelector(`[data-param-id="${paramId}"]`) as HTMLElement | null;
     if (!containerEl) continue;
-    const color = a.type === 'lfo' ? LFO_COLORS[a.idx] : MACRO_COLORS[a.idx];
+    const color = a.type === 'lfo' ? LFO_COLORS[a.idx]
+                : a.type === 'macro' ? MACRO_COLORS[a.idx]
+                : a.type === 'key' ? KEY_COLOR : VEL_COLOR;
     const entry: ModDepthEntry = {
       type: a.type,
       idx: a.idx,
@@ -2238,6 +2304,7 @@ function setupKnobDropZone(containerEl: HTMLElement, paramId: string) {
 
   containerEl.addEventListener('dragover', (e) => {
     if (!activeDrag) return;
+    if (!isValidTargetForDrag(paramId)) return;
     e.preventDefault();
     containerEl.style.setProperty('--drop-color', activeDrag.color);
     containerEl.classList.add('drop-target-active');
@@ -2251,6 +2318,7 @@ function setupKnobDropZone(containerEl: HTMLElement, paramId: string) {
     e.preventDefault();
     containerEl.classList.remove('drop-target-active');
     if (!activeDrag) return;
+    if (!isValidTargetForDrag(paramId)) return;
     const modParamName = MOD_PARAM_NAMES[paramId];
     if (!modParamName) return;
     const entry: ModDepthEntry = {
@@ -2573,6 +2641,10 @@ function makeAnalyzerPanel(): HTMLElement {
   let imageWidth = 0;
   let imageHeight = 0;
   let spectrogramImage: Uint8ClampedArray | null = null;
+  let reusableImageData: ImageData | null = null;
+
+  let waveformDirty = false;
+  let spectrogramDirty = false;
 
   function ensureCanvasSize(canvasWrap: HTMLElement, canvas: HTMLCanvasElement): [number, number] {
     const dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -2594,6 +2666,7 @@ function makeAnalyzerPanel(): HTMLElement {
       imageWidth = w;
       imageHeight = h;
       spectrogramImage = new Uint8ClampedArray(imageWidth * imageHeight * 4);
+      reusableImageData = null; // invalidate on resize
     }
   }
 
@@ -2650,6 +2723,8 @@ function makeAnalyzerPanel(): HTMLElement {
   }
 
   function drawWaveform() {
+    if (!waveformDirty) return;
+    waveformDirty = false;
     const [w, h] = ensureCanvasSize(waveformView.canvasWrap, waveformView.canvas);
     if (w <= 2 || h <= 2) return;
 
@@ -2677,11 +2752,13 @@ function makeAnalyzerPanel(): HTMLElement {
   }
 
   function drawSpectrogram() {
+    if (!spectrogramDirty) return;
+    spectrogramDirty = false;
     ensureSpectrogramSize();
     if (!spectrogramImage) return;
-    const image = spectrogramRenderCtx.createImageData(imageWidth, imageHeight);
-    image.data.set(spectrogramImage);
-    spectrogramRenderCtx.putImageData(image, 0, 0);
+    if (!reusableImageData) reusableImageData = spectrogramRenderCtx.createImageData(imageWidth, imageHeight);
+    reusableImageData.data.set(spectrogramImage);
+    spectrogramRenderCtx.putImageData(reusableImageData, 0, 0);
   }
 
   function render() {
@@ -2692,11 +2769,13 @@ function makeAnalyzerPanel(): HTMLElement {
 
   onWaveform((values) => {
     waveformValues = values;
+    waveformDirty = true;
   });
 
   onSpectrogram((values) => {
     spectrogramValues = values;
     pushSpectrogramColumn();
+    spectrogramDirty = true;
   });
 
   render();
@@ -3237,9 +3316,58 @@ mainLayout.appendChild(rightCol);
   masterWrap.appendChild(buildKnob('pitch_bend_range', 40));
   masterWrap.appendChild(buildKnob('portamento_time', 40));
   masterWrap.appendChild(buildKnob('pan_spread', 40));
+  masterWrap.appendChild(buildKnob('vel_to_amp', 40));
 
   masterPanel.appendChild(masterWrap);
   rightCol.appendChild(masterPanel);
+}
+
+// Key / Vel modulator panels
+{
+  const { panel } = makePanel('Per Voice');
+
+  const kvGrid = document.createElement('div');
+  kvGrid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:4px;';
+
+  for (const { type, label, color } of [
+    { type: 'key' as const, label: 'Key', color: KEY_COLOR },
+    { type: 'vel' as const, label: 'Vel', color: VEL_COLOR },
+  ]) {
+    const cell = document.createElement('div');
+    cell.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 0;';
+
+    const dragHandle = document.createElement('div');
+    dragHandle.className = 'keyvel-drag-handle';
+    dragHandle.style.background = color;
+    dragHandle.style.setProperty('--kv-color', color);
+    dragHandle.draggable = true;
+    dragHandle.setAttribute('data-tooltip', `Drag ${label} onto a knob to modulate it by MIDI ${label === 'Key' ? 'note' : 'velocity'}`);
+
+    dragHandle.addEventListener('dragstart', (e) => {
+      activeDrag = { type, idx: 0, color };
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'copy';
+        e.dataTransfer.setData('text/plain', `${type}:0`);
+      }
+      setAllDropZonesHighlighted(color);
+    });
+
+    dragHandle.addEventListener('dragend', () => {
+      activeDrag = null;
+      setAllDropZonesHighlighted(null);
+    });
+
+    const lbl = document.createElement('div');
+    lbl.style.cssText = `font-size:9px;color:${color};letter-spacing:0.5px;font-weight:500;`;
+    lbl.textContent = label;
+
+    cell.appendChild(dragHandle);
+    cell.appendChild(lbl);
+    kvGrid.appendChild(cell);
+  }
+
+  panel.appendChild(kvGrid);
+  rightCol.appendChild(panel);
 }
 
 notifyHostReady();

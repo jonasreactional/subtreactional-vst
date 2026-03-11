@@ -71,8 +71,8 @@ public:
 
     // Modulation assignment management (not APVTS params — stored in patch JSON)
     struct ModAssignment {
-        int          sourceType;   // 0=LFO, 1=Macro
-        int          sourceIdx;    // 0-3
+        int          sourceType;   // 0=LFO, 1=Macro, 2=Key, 3=Vel
+        int          sourceIdx;    // 0-3 (Key/Vel always 0)
         juce::String paramName;    // dot notation (e.g. "filter.cutoff")
         float        depth;        // -1..+1
     };
@@ -115,6 +115,9 @@ public:
 
     /** Returns the last per-LFO output values (raw * depth, -1..+1). For display only. */
     const float* getLFOOutput() const { return synth.lfo_output; }
+
+    /** Returns audio processing load as a proportion (0..1). Thread-safe. */
+    float getCpuLoad() const { return (float) loadMeasurer_.getLoadAsProportion(); }
 
     /** Returns true (and clears the flag) if applyStateData ran since last check.
      *  Called from the editor timer to know when to re-push mod assignments. */
@@ -184,6 +187,15 @@ private:
 
     // Modulation assignments (persisted alongside patch JSON)
     std::vector<ModAssignment> modAssignments_;
+
+    juce::AudioProcessLoadMeasurer loadMeasurer_;
+
+    // Cached raw APVTS pointers — populated once in prepareToPlay to avoid
+    // per-block string map lookups in getRawParameterValue().
+    std::vector<std::atomic<float>*> rawParamPtrs_;
+
+    // Last values pushed to the synth — skip st_synth_set_param_float when unchanged.
+    std::vector<float> lastSyncedValues_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SubtreactionalAudioProcessor)
 };

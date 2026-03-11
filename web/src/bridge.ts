@@ -13,7 +13,7 @@ declare global {
 }
 
 export interface ModAssignmentInfo {
-  type: 'lfo' | 'macro';
+  type: 'lfo' | 'macro' | 'key' | 'vel';
   idx: number;
   param: string;
   depth: number;
@@ -39,6 +39,7 @@ interface JuceBridgeGlobal {
   onPresets(presets: PresetInfo[]): void;
   onVersion(version: string): void;
   onPresetSaved(name: string, pack: string, category: string): void;
+  onCPU(loadProportion: number): void;
 }
 
 type Listener = (value: number) => void;
@@ -47,6 +48,7 @@ type LFOListener = (values: number[]) => void;
 type ModAssignmentsListener = (assignments: ModAssignmentInfo[]) => void;
 type PresetsListener = (presets: PresetInfo[]) => void;
 type VersionListener = (version: string) => void;
+type CPUListener = (loadProportion: number) => void;
 
 const listeners = new Map<string, Set<Listener>>();
 const lastParamValues = new Map<string, number>();
@@ -57,6 +59,7 @@ const modAssignmentsListeners = new Set<ModAssignmentsListener>();
 let lastModAssignments: ModAssignmentInfo[] | undefined;
 const presetsListeners = new Set<PresetsListener>();
 const versionListeners = new Set<VersionListener>();
+const cpuListeners = new Set<CPUListener>();
 let lastVersion: string | undefined;
 type PresetSavedListener = (name: string, pack: string, category: string) => void;
 const presetSavedListeners = new Set<PresetSavedListener>();
@@ -89,6 +92,9 @@ window.__juce = {
   },
   onPresetSaved(name: string, pack: string, category: string) {
     presetSavedListeners.forEach((fn) => fn(name, pack, category));
+  },
+  onCPU(loadProportion: number) {
+    cpuListeners.forEach((fn) => fn(loadProportion));
   },
 };
 
@@ -145,17 +151,17 @@ export function onModAssignments(fn: ModAssignmentsListener): () => void {
 }
 
 /** Send a modulation assignment to C++ */
-export function sendModAdd(type: 'lfo' | 'macro', idx: number, paramName: string, depth: number): void {
+export function sendModAdd(type: 'lfo' | 'macro' | 'key' | 'vel', idx: number, paramName: string, depth: number): void {
   window.location.href = `juce://mod_add?src=${type}&idx=${idx}&param=${encodeURIComponent(paramName)}&depth=${depth}`;
 }
 
 /** Remove a modulation assignment */
-export function sendModRemove(type: 'lfo' | 'macro', idx: number, paramName: string): void {
+export function sendModRemove(type: 'lfo' | 'macro' | 'key' | 'vel', idx: number, paramName: string): void {
   window.location.href = `juce://mod_remove?src=${type}&idx=${idx}&param=${encodeURIComponent(paramName)}`;
 }
 
 /** Update depth of an existing modulation assignment */
-export function sendModSetDepth(type: 'lfo' | 'macro', idx: number, paramName: string, depth: number): void {
+export function sendModSetDepth(type: 'lfo' | 'macro' | 'key' | 'vel', idx: number, paramName: string, depth: number): void {
   window.location.href = `juce://mod_depth?src=${type}&idx=${idx}&param=${encodeURIComponent(paramName)}&depth=${depth}`;
 }
 
@@ -192,6 +198,12 @@ export function openNativeSaveDialog(currentName: string, currentPack: string, c
 export function onPresetSaved(fn: PresetSavedListener): () => void {
   presetSavedListeners.add(fn);
   return () => presetSavedListeners.delete(fn);
+}
+
+/** Subscribe to audio processing load updates pushed at ~30 Hz. */
+export function onCPU(fn: CPUListener): () => void {
+  cpuListeners.add(fn);
+  return () => cpuListeners.delete(fn);
 }
 
 /** Save current patch as a user preset */
