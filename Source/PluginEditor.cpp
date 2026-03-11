@@ -119,6 +119,7 @@ void SubtreactionalAudioProcessorEditor::timerCallback()
     // Push LFO output unconditionally at 30 Hz so the LED pulse animates
     // even when no audio is playing.
     bridge.pushLFOValues (processor.getLFOOutput(), ST_MAX_LFOS);
+    bridge.pushCPU (processor.getCpuLoad());
 
     const int numRead = processor.popAnalyzerSamples (analysisReadBuffer.data(),
                                                       static_cast<int> (analysisReadBuffer.size()));

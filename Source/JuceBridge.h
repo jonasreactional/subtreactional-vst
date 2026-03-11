@@ -82,6 +82,9 @@ public:
     /** Push current LFO output values (raw * depth, -1..+1) to the web UI. */
     void pushLFOValues (const float* vals, int n);
 
+    /** Push audio processing load (0..1) to the web UI. */
+    void pushCPU (float loadProportion);
+
     /** Push all current APVTS values to the web UI. */
     void pushAllParams();
 
