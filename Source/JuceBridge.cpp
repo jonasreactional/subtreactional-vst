@@ -10,6 +10,12 @@
 static juce::WebBrowserComponent::Options makeBrowserOptions()
 {
     juce::WebBrowserComponent::Options opts;
+
+    // Prevent JUCE from navigating to about:blank when the editor is hidden.
+    // Some hosts briefly hide the plugin window during setup, and the
+    // goBack() recovery path clears lastURL, leaving the page stuck on blank.
+    opts = opts.withKeepPageLoadedWhenBrowserIsHidden();
+
    #if JUCE_WINDOWS
     // Default Windows backend is IE (ES5 only) — request WebView2 (Chromium/Edge).
     // Requires JUCE_USE_WIN_WEBVIEW2=1 and WebView2LoaderStatic.lib at link time.
