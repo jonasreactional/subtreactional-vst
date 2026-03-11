@@ -97,6 +97,11 @@ export function setParam(id: string, value: number): void {
   window.location.href = `juce://param?id=${encodeURIComponent(id)}&v=${value}`;
 }
 
+/** Read the last known value for a parameter (as received from C++). */
+export function getParam(id: string): number | undefined {
+  return lastParamValues.get(id);
+}
+
 /** Subscribe to parameter changes pushed from C++. Returns an unsubscribe function. */
 export function onParam(id: string, fn: Listener): () => void {
   if (!listeners.has(id)) listeners.set(id, new Set());

@@ -1,4 +1,4 @@
-import { setParam, onParam, onWaveform, onSpectrogram, onLFO, notifyHostReady, sendModAdd, sendModRemove, sendModSetDepth, onModAssignments, onPresets, onVersion, onPresetSaved, openNativeSaveDialog, sendLoadFactoryPreset, sendLoadUserPreset, sendSavePreset, type PresetInfo } from './bridge';
+import { setParam, getParam, onParam, onWaveform, onSpectrogram, onLFO, notifyHostReady, sendModAdd, sendModRemove, sendModSetDepth, onModAssignments, onPresets, onVersion, onPresetSaved, openNativeSaveDialog, sendLoadFactoryPreset, sendLoadUserPreset, sendSavePreset, type PresetInfo } from './bridge';
 import jonasPhotoUrl from './jonas.jpeg';
 
 // ---------------------------------------------------------------------------
@@ -37,6 +37,17 @@ function rawToNorm(raw: number, def: ParamDef): number {
 const OSC_TYPES = ['Off', 'Saw', 'Square', 'Sine', 'Tri', 'Noise'];
 const FILTER_TYPES = ['Off', 'LP', 'HP', 'BP'];
 const FX_TYPES = ['Off', 'Delay', 'Chorus', 'Flanger', 'Phaser', 'VHS', 'Reverb', 'Distortion', 'EQ'];
+
+const FX_PARAM_SUFFIXES = [
+  'type', 'mix',
+  'delay_time', 'delay_feedback',
+  'chorus_rate', 'chorus_depth',
+  'reverb_t60', 'reverb_damping', 'reverb_input_lpf',
+  'distortion_drive',
+  'vhs_wow_rate', 'vhs_wow_depth', 'vhs_flutter_rate', 'vhs_flutter_depth',
+  'vhs_drive', 'vhs_tone', 'vhs_noise', 'vhs_dropout',
+  'eq_low_freq', 'eq_low_gain', 'eq_mid_gain', 'eq_high_freq', 'eq_high_gain',
+] as const;
 const PLAY_MODES = ['Poly', 'Mono', 'Legato'];
 const LFO_SHAPES = ['Sine', 'Tri', 'Saw', 'Square'];
 const VOICE_COUNTS = Array.from({ length: 16 }, (_, i) => String(i + 1)); // '1' to '16'
@@ -845,14 +856,41 @@ style.textContent = `
     line-height: 1;
   }
 
-  .fx-slot-label {
-    flex: 0 0 16px;
+  .fx-slot-drag-handle {
+    flex: 0 0 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: grab;
+    padding: 6px 2px;
+    color: ${C.white48};
+    opacity: 0.3;
+    transition: opacity 120ms, background 120ms;
+    align-self: stretch;
+    border-radius: 10px 0 0 10px;
+    user-select: none;
+  }
+  .fx-slot-drag-handle:hover {
+    opacity: 0.75;
+    background: ${C.white8};
+  }
+  .fx-slot-drag-handle:active {
+    cursor: grabbing;
+  }
+  .fx-slot-drag-handle span {
     font-size: 9px;
     letter-spacing: 0.5px;
-    color: ${C.white48};
     text-transform: uppercase;
-    text-align: center;
-    opacity: 0.25;
+    line-height: 1;
+  }
+  .fx-slot.fx-dragging {
+    opacity: 0.35;
+  }
+  .fx-slot.fx-drag-over {
+    box-shadow: inset 0 0 0 1.5px ${C.purple};
+    background: linear-gradient(-10deg, rgba(130,92,237,0.12), rgba(130,92,237,0.04));
   }
 
   .fx-type-wrapper {
@@ -1994,6 +2032,22 @@ function modRafLoop(): void {
 requestAnimationFrame(modRafLoop);
 
 let activeDrag: ActiveDrag | null = null;
+let fxDragSrcIdx: number | null = null;
+
+// Async param queue — WKWebView only processes one window.location.href per JS tick,
+// so batched setParam calls must be staggered across ticks.
+const _paramQueue: Array<[string, number]> = [];
+let _paramFlushPending = false;
+function _flushParamQueue() {
+  if (_paramQueue.length === 0) { _paramFlushPending = false; return; }
+  const [id, value] = _paramQueue.shift()!;
+  setParam(id, value);
+  setTimeout(_flushParamQueue, 0);
+}
+function queueParam(id: string, value: number) {
+  _paramQueue.push([id, value]);
+  if (!_paramFlushPending) { _paramFlushPending = true; setTimeout(_flushParamQueue, 0); }
+}
 
 function setAllDropZonesHighlighted(color: string | null) {
   document.querySelectorAll<HTMLElement>('.knob-container[data-param-id]').forEach((el) => {
@@ -2777,6 +2831,25 @@ leftCol.appendChild(envRow);
 envRow.appendChild(makeAnalyzerPanel());
 
 // FX rack (compact)
+function reorderFxSlots(srcIdx: number, dstIdx: number) {
+  if (srcIdx === dstIdx) return;
+  const snapshots = ([0, 1, 2, 3] as const).map(i => {
+    const snap: Record<string, number> = {};
+    for (const suffix of FX_PARAM_SUFFIXES) {
+      snap[suffix] = getParam(`fx${i}_${suffix}`) ?? 0;
+    }
+    return snap;
+  });
+  const order = [0, 1, 2, 3];
+  order.splice(srcIdx, 1);
+  order.splice(dstIdx, 0, srcIdx);
+  order.forEach((oldIdx, newIdx) => {
+    for (const suffix of FX_PARAM_SUFFIXES) {
+      queueParam(`fx${newIdx}_${suffix}`, snapshots[oldIdx][suffix]);
+    }
+  });
+}
+
 {
   const fxRowWrap = document.createElement('div');
   fxRowWrap.className = 'fx-row-wrap';
@@ -2801,9 +2874,44 @@ envRow.appendChild(makeAnalyzerPanel());
     const slot = document.createElement('div');
     slot.className = 'fx-slot';
 
-    const slotLabel = document.createElement('div');
-    slotLabel.className = 'fx-slot-label';
-    slotLabel.textContent = String(i + 1);
+    const dragHandle = document.createElement('div');
+    dragHandle.className = 'fx-slot-drag-handle';
+    dragHandle.draggable = true;
+    dragHandle.innerHTML = `
+      <svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor" style="flex-shrink:0">
+        <circle cx="2" cy="2" r="1.2"/><circle cx="6" cy="2" r="1.2"/>
+        <circle cx="2" cy="5.5" r="1.2"/><circle cx="6" cy="5.5" r="1.2"/>
+        <circle cx="2" cy="9" r="1.2"/><circle cx="6" cy="9" r="1.2"/>
+      </svg>
+      <span>${i + 1}</span>
+    `;
+    dragHandle.addEventListener('dragstart', (e) => {
+      fxDragSrcIdx = i;
+      slot.classList.add('fx-dragging');
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+    });
+    dragHandle.addEventListener('dragend', () => {
+      fxDragSrcIdx = null;
+      slot.classList.remove('fx-dragging');
+    });
+    slot.addEventListener('dragover', (e) => {
+      if (fxDragSrcIdx === null || fxDragSrcIdx === i) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      slot.classList.add('fx-drag-over');
+    });
+    slot.addEventListener('dragleave', (e) => {
+      if (!slot.contains(e.relatedTarget as Node)) {
+        slot.classList.remove('fx-drag-over');
+      }
+    });
+    slot.addEventListener('drop', (e) => {
+      e.preventDefault();
+      slot.classList.remove('fx-drag-over');
+      if (fxDragSrcIdx !== null && fxDragSrcIdx !== i) {
+        reorderFxSlots(fxDragSrcIdx, i);
+      }
+    });
 
     const slotMain = document.createElement('div');
     slotMain.className = 'fx-slot-main';
@@ -2947,7 +3055,7 @@ envRow.appendChild(makeAnalyzerPanel());
     slotMain.appendChild(fxTypeWrapper);
     slotMain.appendChild(mixKnob);
 
-    slot.appendChild(slotLabel);
+    slot.appendChild(dragHandle);
     slot.appendChild(slotMain);
     slot.appendChild(paramsWrap);
 
