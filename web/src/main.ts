@@ -1954,7 +1954,7 @@ function registerModIndicatorUpdater(paramId: string): void {
 
     // lfoCurrentOutput[idx] is raw * lfoDepth, pushed from synth at 30 Hz
     const signal = (a: { type: string; idx: number; depth: number }) =>
-      a.type === 'lfo' ? lfoCurrentOutput[a.idx] : macroV[a.idx] * 2 - 1;
+      a.type === 'lfo' ? lfoCurrentOutput[a.idx] : macroV[a.idx];
 
     let rawMod: number;
     if (logScale !== undefined) {
